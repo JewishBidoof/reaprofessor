@@ -1,6 +1,7 @@
 -- @description ReaProfessor routing helpers (1:1 I/O, record-safe layouts)
--- @version 0.2.0
--- @author ReaProfessor
+-- @version 0.3.0
+-- @author JewishBidoof
+-- @noindex
 
 local Routing = {}
 

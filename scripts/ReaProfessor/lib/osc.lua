@@ -1,14 +1,28 @@
 -- @description ReaProfessor OSC address map + ExtState bridge
--- @version 0.2.0
--- @author ReaProfessor
+-- @version 0.3.0
+-- @author JewishBidoof
+-- @noindex
 --
--- Transport options:
--- 1) In-process: OSC.dispatch / control_service handlers
--- 2) ExtState bridge: write ReaProfessor/osc_queue JSON (UDP bridge or /action scripts)
--- 3) Native REAPER OSC: resources/osc/ReaProfessor.ReaperOSC → /action/...
+-- Built-in path suggestions exist for documentation only.
+-- The control service only honors user-defined OSC mappings.
 
 local OSC = {}
 
+--- Suggested LP2-style paths (not active until mapped by the user).
+OSC.suggested_paths = {
+  "/CueLists/Go",
+  "/CueLists/Back",
+  "/CueLists/GoTo",
+  "/GlobalSnapshots/Recall",
+  "/GlobalSnapshots/RecallName",
+  "/GlobalSnapshots/Mode",
+  "/Command/Channels/Create",
+  "/Command/Channels/Mode",
+  "/Command/Channels/ApplyRecordSafe",
+  "/Command/View/LiveMode",
+}
+
+-- Kept for docs / older call sites; not used as live defaults.
 OSC.addresses = {
   cue_go           = "/CueLists/Go",
   cue_back         = "/CueLists/Back",
@@ -25,6 +39,32 @@ OSC.addresses = {
 local QUEUE_SECTION = "ReaProfessor"
 local QUEUE_KEY = "osc_queue"
 
+function OSC.empty_map()
+  return {}
+end
+
+function OSC.describe(bind)
+  if not bind then return "?" end
+  local cmd = tostring(bind.command or "?")
+  if bind.arg ~= nil and tostring(bind.arg) ~= "" then
+    cmd = cmd .. " (" .. tostring(bind.arg) .. ")"
+  end
+  local state = (bind.enabled == false) and "OFF" or "ON"
+  return string.format("[%s] %s  →  %s", state, tostring(bind.path or "?"), cmd)
+end
+
+--- Resolve a received OSC path against the user map.
+-- @return command, bind or nil
+function OSC.match(path, map)
+  if not path or type(map) ~= "table" then return nil, nil end
+  for _, bind in ipairs(map) do
+    if bind.enabled ~= false and bind.path == path then
+      return bind.command, bind
+    end
+  end
+  return nil, nil
+end
+
 function OSC.dispatch(path, args, handlers)
   if not path or not handlers then return false end
   local fn = handlers[path]
@@ -35,7 +75,6 @@ function OSC.dispatch(path, args, handlers)
   return false
 end
 
---- Push a command for the control service (from external OSC→ExtState bridges).
 function OSC.enqueue(path, args)
   local raw = select(2, reaper.GetProjExtState(0, QUEUE_SECTION, QUEUE_KEY))
   local Data = require("data")
@@ -45,7 +84,6 @@ function OSC.enqueue(path, args)
   reaper.SetProjExtState(0, QUEUE_SECTION, QUEUE_KEY, Data.encode(queue))
 end
 
---- Drain queued OSC commands; returns list of {path,args}.
 function OSC.drain_queue()
   local Data = require("data")
   local raw = select(2, reaper.GetProjExtState(0, QUEUE_SECTION, QUEUE_KEY))
@@ -55,7 +93,6 @@ function OSC.drain_queue()
   return queue
 end
 
---- Also accept global ExtState one-shot: ReaProfessor / osc_cmd = "/CueLists/Go"
 function OSC.poll_oneshot()
   local cmd = reaper.GetExtState(QUEUE_SECTION, "osc_cmd")
   if not cmd or cmd == "" then return nil end

@@ -1,7 +1,8 @@
--- @description ReaProfessor - Create N channels with 1:1 I/O
--- @version 0.2.0
--- @author ReaProfessor
--- @about Create mono channels routed input N → hardware out N (same-strip or double-patch).
+-- @description ReaProfessor - Create Channels
+-- @version 0.3.0
+-- @author JewishBidoof
+-- @noindex
+-- @about Create N mono channels with 1:1 hardware I/O.
 
 local res = reaper.GetResourcePath() .. "/Scripts/ReaProfessor/"
 local src = debug.getinfo(1, "S").source

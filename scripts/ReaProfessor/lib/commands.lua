@@ -1,8 +1,38 @@
--- @description ReaProfessor central command handlers (cues, snaps, channels)
--- @version 0.2.0
--- @author ReaProfessor
+-- @description ReaProfessor central command handlers
+-- @version 0.3.0
+-- @author JewishBidoof
+-- @noindex
 
 local Commands = {}
+
+Commands.catalog = {
+  { id = "cue_go",            label = "Cue: GO",                 needs_arg = false },
+  { id = "cue_back",          label = "Cue: Back",               needs_arg = false },
+  { id = "cue_goto",          label = "Cue: Go To #",            needs_arg = true,  arg_hint = "cue index" },
+  { id = "snap_recall",       label = "Snapshot: Recall",        needs_arg = true,  arg_hint = "index or name" },
+  { id = "snap_mode_bypass",  label = "Snapshot mode: Bypass",   needs_arg = false },
+  { id = "snap_mode_params",  label = "Snapshot mode: Params",   needs_arg = false },
+  { id = "snap_mode_full",    label = "Snapshot mode: Full FX",  needs_arg = false },
+  { id = "create_channels",   label = "Create Channels",         needs_arg = true,  arg_hint = "count" },
+  { id = "channel_mode_same", label = "Channel mode: Same strip", needs_arg = false },
+  { id = "channel_mode_dbl",  label = "Channel mode: Double patch", needs_arg = false },
+  { id = "record_safe",       label = "Apply record-safe",       needs_arg = false },
+  { id = "live_mode",         label = "Toggle Live Mode",        needs_arg = false },
+}
+
+function Commands.label_for(id)
+  for _, c in ipairs(Commands.catalog) do
+    if c.id == id then return c.label end
+  end
+  return id or "?"
+end
+
+function Commands.catalog_entry(id)
+  for _, c in ipairs(Commands.catalog) do
+    if c.id == id then return c end
+  end
+  return nil
+end
 
 local function load_deps()
   return require("data"), require("osc"), require("routing")
@@ -126,34 +156,29 @@ function Commands.apply_record_safe(mode)
   return true
 end
 
-function Commands.handlers()
-  local OSC = require("osc")
-  return {
-    [OSC.addresses.cue_go] = function() Commands.cue_go() end,
-    [OSC.addresses.cue_back] = function() Commands.cue_back() end,
-    [OSC.addresses.cue_goto] = function(args) Commands.cue_goto(args[1]) end,
-    [OSC.addresses.snap_recall] = function(args) Commands.snap_recall(args[1]) end,
-    [OSC.addresses.snap_recall_name] = function(args) Commands.snap_recall(args[1]) end,
-    [OSC.addresses.snap_mode] = function(args) Commands.set_snapshot_mode(args[1]) end,
-    [OSC.addresses.create_channels] = function(args) Commands.create_channels(args[1], args[2]) end,
-    [OSC.addresses.channel_mode] = function(args) Commands.set_channel_mode(args[1]) end,
-    [OSC.addresses.record_safe] = function(args) Commands.apply_record_safe(args[1]) end,
-    [OSC.addresses.live_mode] = function()
-      local dir = reaper.GetResourcePath() .. "/Scripts/ReaProfessor/"
-      if reaper.file_exists(dir .. "live_mode.lua") then dofile(dir .. "live_mode.lua") end
-    end,
-  }
-end
-
-function Commands.run_named(command)
+function Commands.run_named(command, arg)
   if command == "cue_go" then return Commands.cue_go()
   elseif command == "cue_back" then return Commands.cue_back()
+  elseif command == "cue_goto" then return Commands.cue_goto(arg)
+  elseif command == "snap_recall" then return Commands.snap_recall(arg)
+  elseif command == "snap_mode_bypass" then return Commands.set_snapshot_mode("bypass")
+  elseif command == "snap_mode_params" then return Commands.set_snapshot_mode("params")
+  elseif command == "snap_mode_full" then return Commands.set_snapshot_mode("full")
+  elseif command == "create_channels" then return Commands.create_channels(arg)
+  elseif command == "channel_mode_same" then return Commands.set_channel_mode("same_strip")
+  elseif command == "channel_mode_dbl" then return Commands.set_channel_mode("double_patch")
+  elseif command == "record_safe" then return Commands.apply_record_safe()
   elseif command == "live_mode" then
     local dir = reaper.GetResourcePath() .. "/Scripts/ReaProfessor/"
     if reaper.file_exists(dir .. "live_mode.lua") then dofile(dir .. "live_mode.lua") end
     return true
   end
   return false
+end
+
+--- Mark maps dirty so the control service reloads.
+function Commands.maps_changed()
+  reaper.SetExtState("ReaProfessor", "maps_dirty", "1", false)
 end
 
 return Commands

@@ -1,0 +1,24 @@
+-- @description ReaProfessor
+-- @version 0.3.0
+-- @author JewishBidoof
+-- @metapackage
+-- @provides
+--   [main] ../scripts/ReaProfessor/ReaProfessor.lua
+--   [main] ../scripts/ReaProfessor/cue_list.lua
+--   [main] ../scripts/ReaProfessor/snapshots.lua
+--   [main] ../scripts/ReaProfessor/chain_rack.lua
+--   [main] ../scripts/ReaProfessor/create_channels.lua
+--   [main] ../scripts/ReaProfessor/live_mode.lua
+--   [main] ../scripts/ReaProfessor/control_panel.lua
+--   [main] ../scripts/ReaProfessor/control_service.lua
+--   [main] ../scripts/ReaProfessor/mapping.lua
+--   [nomain] ../scripts/ReaProfessor/lib/*.lua
+--   [data] ../resources/osc/ReaProfessor.ReaperOSC
+-- @changelog
+--   + Custom MIDI/OSC mapping editor (no default bindings)
+--   + ReaPack metapackage
+-- @about
+--   Live-oriented REAPER toolkit inspired by LiveProfessor 2: cue lists,
+--   FX snapshots, 1:1 channel routing, record-safe processing, and fully
+--   custom MIDI/OSC maps. Run Actions → ReaProfessor after install.
+

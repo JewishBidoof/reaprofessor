@@ -1,6 +1,7 @@
 -- @description ReaProfessor shared UI helpers (gfx)
--- @version 0.1.0
--- @author ReaProfessor
+-- @version 0.3.0
+-- @author JewishBidoof
+-- @noindex
 
 local UI = {}
 

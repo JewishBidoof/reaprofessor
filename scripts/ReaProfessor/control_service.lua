@@ -1,8 +1,8 @@
 -- @description ReaProfessor - Control Service (OSC ExtState + MIDI)
--- @version 0.2.0
--- @author ReaProfessor
--- @about Background defer loop: MIDI map + ExtState OSC queue → commands.
--- @provide [main] .
+-- @version 0.3.0
+-- @author JewishBidoof
+-- @noindex
+-- @about Background defer loop using user-defined MIDI/OSC maps only (no defaults).
 
 local res = reaper.GetResourcePath() .. "/Scripts/ReaProfessor/"
 local src = debug.getinfo(1, "S").source
@@ -14,29 +14,38 @@ local OSC = require("osc")
 local MIDI = require("midi")
 local Commands = require("commands")
 
--- Singleton guard via global ExtState
 if reaper.GetExtState("ReaProfessor", "control_service") == "1" then
   reaper.ShowConsoleMsg("[ReaProfessor] Control service already running\n")
   return
 end
 reaper.SetExtState("ReaProfessor", "control_service", "1", false)
 
-local handlers = Commands.handlers()
-local midi_map = Data.load_midi_map() or MIDI.default_map()
-if not Data.load_midi_map() then
-  Data.save_midi_map(midi_map)
-end
+local midi_map = Data.load_midi_map()
+local osc_map = Data.load_osc_map()
 local last_midi_ts = 0
 local running = true
 
-reaper.ShowConsoleMsg("[ReaProfessor] Control service started (MIDI + OSC queue)\n")
-reaper.ShowConsoleMsg("  OSC oneshot: ExtState ReaProfessor/osc_cmd = /CueLists/Go\n")
-reaper.ShowConsoleMsg("  MIDI defaults: Note 36=GO, 37=Back, CC64=GO (ch1)\n")
+local function reload_maps()
+  midi_map = Data.load_midi_map()
+  osc_map = Data.load_osc_map()
+  reaper.ShowConsoleMsg(string.format(
+    "[ReaProfessor] Maps loaded — MIDI:%d  OSC:%d\n", #midi_map, #osc_map))
+end
 
-local function handle_path(path, args)
-  if OSC.dispatch(path, args, handlers) then
-    reaper.ShowConsoleMsg(string.format("[ReaProfessor] OSC %s\n", tostring(path)))
+reload_maps()
+reaper.ShowConsoleMsg("[ReaProfessor] Control service started (user maps only)\n")
+reaper.ShowConsoleMsg("  Configure bindings via ReaProfessor → Mapping\n")
+
+local function handle_incoming_path(path, args)
+  local command, bind = OSC.match(path, osc_map)
+  if not command then return false end
+  local arg = bind.arg
+  if arg == nil or arg == "" then
+    arg = args and args[1]
   end
+  Commands.run_named(command, arg)
+  reaper.ShowConsoleMsg(string.format("[ReaProfessor] OSC %s → %s\n", tostring(path), tostring(command)))
+  return true
 end
 
 local function tick()
@@ -45,24 +54,25 @@ local function tick()
     return
   end
 
-  -- ExtState oneshot
+  if reaper.GetExtState("ReaProfessor", "maps_dirty") == "1" then
+    reaper.DeleteExtState("ReaProfessor", "maps_dirty", false)
+    reload_maps()
+  end
+
   local one = OSC.poll_oneshot()
-  if one then handle_path(one.path, one.args) end
+  if one then handle_incoming_path(one.path, one.args) end
 
-  -- Project ExtState queue
   for _, item in ipairs(OSC.drain_queue()) do
-    handle_path(item.path, item.args)
+    handle_incoming_path(item.path, item.args)
   end
 
-  -- MIDI
-  local cmds
-  cmds, last_midi_ts = MIDI.poll_commands_v2(midi_map, last_midi_ts)
-  for _, cmd in ipairs(cmds) do
-    Commands.run_named(cmd)
-    reaper.ShowConsoleMsg("[ReaProfessor] MIDI → " .. tostring(cmd) .. "\n")
+  local events
+  events, last_midi_ts = MIDI.poll_commands_v2(midi_map, last_midi_ts)
+  for _, ev in ipairs(events) do
+    Commands.run_named(ev.command, ev.arg)
+    reaper.ShowConsoleMsg("[ReaProfessor] MIDI → " .. tostring(ev.command) .. "\n")
   end
 
-  -- Allow stop via ExtState
   if reaper.GetExtState("ReaProfessor", "control_service_stop") == "1" then
     reaper.DeleteExtState("ReaProfessor", "control_service_stop", false)
     running = false

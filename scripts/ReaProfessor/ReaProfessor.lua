@@ -1,7 +1,8 @@
--- @description ReaProfessor hub — launch live panels
--- @version 0.2.0
--- @author ReaProfessor
--- @about Entry point for ReaProfessor (LiveProfessor-style REAPER workflow).
+-- @description ReaProfessor
+-- @version 0.3.0
+-- @author JewishBidoof
+-- @about Live plugin host toolkit for REAPER (cue lists, snapshots, 1:1 channels, custom MIDI/OSC).
+-- @noindex
 
 local res = reaper.GetResourcePath() .. "/Scripts/ReaProfessor/"
 local src = debug.getinfo(1, "S").source
@@ -11,7 +12,7 @@ package.path = script_dir .. "lib/?.lua;" .. res .. "lib/?.lua;" .. package.path
 local UI = require("ui")
 
 local running = true
-UI.init("ReaProfessor", 560, 520, 0)
+UI.init("ReaProfessor", 560, 560, 0)
 
 local function open(rel)
   local path = script_dir .. rel
@@ -29,7 +30,8 @@ local buttons = {
   { id = "cues", label = "Cue List", file = "cue_list.lua" },
   { id = "snaps", label = "Snapshots (bypass / params / full)", file = "snapshots.lua" },
   { id = "chains", label = "Chain Rack", file = "chain_rack.lua" },
-  { id = "ctrl", label = "OSC / MIDI Control", file = "control_panel.lua" },
+  { id = "map", label = "MIDI / OSC Mapping", file = "mapping.lua" },
+  { id = "ctrl", label = "Control Service", file = "control_panel.lua" },
 }
 
 local function draw()
@@ -41,9 +43,9 @@ local function draw()
   gfx.setfont(1)
   UI.label(24, 58, "Live plugin hosting for REAPER", UI.colors.text)
   gfx.setfont(3)
-  UI.label(24, 84, "Multitrack record · FX snapshots · cue lists · OSC/MIDI", UI.colors.muted)
+  UI.label(24, 84, "Multitrack record · FX snapshots · cues · custom MIDI/OSC", UI.colors.muted)
 
-  local y = 130
+  local y = 120
   local bw, bh = w - 48, 40
   for _, b in ipairs(buttons) do
     if UI.button(b.id, 24, y, bw, bh, b.label) then open(b.file) end

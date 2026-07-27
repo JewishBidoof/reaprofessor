@@ -1,3 +1,8 @@
+-- @description ReaProfessor library (path.lua)
+-- @version 0.3.0
+-- @author JewishBidoof
+-- @noindex
+
 -- Shared path bootstrap for ReaProfessor scripts (works with Actions + dofile).
 local M = {}
 

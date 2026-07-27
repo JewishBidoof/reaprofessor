@@ -1,7 +1,8 @@
--- @description ReaProfessor - Global Snapshots
--- @version 0.2.0
--- @author ReaProfessor
--- @about Capture/recall with mode: bypass-only, params, or full FX chain reload.
+-- @description ReaProfessor - Snapshots
+-- @version 0.3.0
+-- @author JewishBidoof
+-- @noindex
+-- @about Capture/recall with bypass, params, or full FX reload.
 
 local res = reaper.GetResourcePath() .. "/Scripts/ReaProfessor/"
 local src = debug.getinfo(1, "S").source

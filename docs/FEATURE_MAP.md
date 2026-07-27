@@ -10,7 +10,7 @@ Target: make REAPER feel like a dedicated live plugin host instead of a studio D
 | Global Snapshots | Store/recall whole show state | `snapshots.lua` with **bypass / params / full FX reload** modes |
 | 1:1 channel setup | Quick rack of inputs | `create_channels.lua` — N mono in→HW out |
 | Record while processing | Multitrack dry + live FX | **Same strip** (record input / monitor FX) or **double patch** (REC + FX tracks) |
-| OSC / MIDI | Hardware + show control | `control_service.lua` + ExtState OSC queue + MIDI map |
+| OSC / MIDI | Hardware + show control | **Mapping** editor — user-defined only (no defaults); control service |
 | Live Mode | Focus on racks + cues | `live_mode.lua` |
 | Signal Chains | Serial plugin racks | Tracks as chains; `chain_rack.lua` |
 
@@ -31,9 +31,9 @@ Processing must never alter what hits the multitrack:
 
 ## OSC addresses (control service)
 
-See `resources/osc/reaprofessor_addresses.txt` and `ReaProfessor.ReaperOSC`.
+Suggested paths are listed in Mapping → OSC → Suggested path. **Nothing is active until you add a binding.**
 
-Oneshoot bridge: set ExtState `ReaProfessor` / `osc_cmd` = `/CueLists/Go` (optional `osc_arg`).
+Oneshoot bridge (after you map the path): set ExtState `ReaProfessor` / `osc_cmd` to your mapped path (optional `osc_arg`).
 
 ## Priority 2 — later
 

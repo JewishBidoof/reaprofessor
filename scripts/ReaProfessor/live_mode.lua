@@ -1,7 +1,8 @@
--- @description ReaProfessor - Live Mode toggle
--- @version 0.1.0
--- @author ReaProfessor
--- @about Focus REAPER on mixer + show control; hide arrange clutter.
+-- @description ReaProfessor - Live Mode
+-- @version 0.3.0
+-- @author JewishBidoof
+-- @noindex
+-- @about Focus mixer and open cue list for live use.
 
 local res = reaper.GetResourcePath() .. "/Scripts/ReaProfessor/"
 local src = debug.getinfo(1, "S").source

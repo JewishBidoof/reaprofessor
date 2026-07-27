@@ -1,7 +1,8 @@
--- @description ReaProfessor - Chain Rack overview
--- @version 0.1.0
--- @author ReaProfessor
--- @about Lists tracks as LiveProfessor-style signal chains with FX order.
+-- @description ReaProfessor - Chain Rack
+-- @version 0.3.0
+-- @author JewishBidoof
+-- @noindex
+-- @about Signal-chain overview of tracks and FX order.
 
 local res = reaper.GetResourcePath() .. "/Scripts/ReaProfessor/"
 local src = debug.getinfo(1, "S").source

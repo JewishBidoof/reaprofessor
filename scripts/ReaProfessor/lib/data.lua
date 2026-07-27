@@ -1,6 +1,7 @@
 -- @description ReaProfessor ExtState data helpers
--- @version 0.2.0
--- @author ReaProfessor
+-- @version 0.3.0
+-- @author JewishBidoof
+-- @noindex
 
 local Data = {}
 
@@ -9,6 +10,7 @@ local CUES_KEY = "cues_json"
 local SNAPS_KEY = "snapshots_json"
 local META_KEY = "meta_json"
 local MIDI_KEY = "midi_map_json"
+local OSC_KEY = "osc_map_json"
 
 -- Snapshot recall modes:
 --   bypass  = only FX enable/bypass (+ mute/solo)
@@ -193,12 +195,23 @@ end
 function Data.load_midi_map()
   local raw = proj_ext_get(MIDI_KEY)
   local map = Data.decode(raw)
-  if type(map) ~= "table" then return nil end
+  if type(map) ~= "table" then return {} end
   return map
 end
 
 function Data.save_midi_map(map)
-  proj_ext_set(MIDI_KEY, Data.encode(map))
+  proj_ext_set(MIDI_KEY, Data.encode(map or {}))
+end
+
+function Data.load_osc_map()
+  local raw = proj_ext_get(OSC_KEY)
+  local map = Data.decode(raw)
+  if type(map) ~= "table" then return {} end
+  return map
+end
+
+function Data.save_osc_map(map)
+  proj_ext_set(OSC_KEY, Data.encode(map or {}))
 end
 
 function Data.new_id(prefix)

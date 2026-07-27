@@ -10,6 +10,8 @@ REAPER theme + ReaScript pack to approximate **LiveProfessor 2** (live VST host 
 - `tools/start_jack.sh` keeps a dummy JACK server alive (no audio hardware required).
 - GUI is available on `DISPLAY=:1` (VNC). Prefer scripted smoke tests for verification.
 
+MIDI/OSC bindings are empty until configured in **Mapping**.
+
 ## Verify changes
 
 ```bash

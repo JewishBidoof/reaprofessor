@@ -1,9 +1,9 @@
--- @description ReaProfessor - Cue List (LiveProfessor-style show control)
--- @version 0.1.0
--- @author ReaProfessor
--- @about Ordered cue list with GO / Back / Jump. Cues stored in project ExtState.
--- @provides
---   [main] .
+-- @description ReaProfessor - Cue List
+-- @version 0.3.0
+-- @author JewishBidoof
+-- @noindex
+-- @about Ordered cue list with GO / Back / Jump.
+
 
 local res = reaper.GetResourcePath() .. "/Scripts/ReaProfessor/"
 local src = debug.getinfo(1, "S").source
@@ -12,7 +12,6 @@ package.path = script_dir .. "lib/?.lua;" .. res .. "lib/?.lua;" .. package.path
 
 local UI = require("ui")
 local Data = require("data")
-local OSC = require("osc")
 local Commands = require("commands")
 
 local cues = Data.load_cues()
@@ -42,8 +41,6 @@ local function go_to(idx)
   Commands.cue_goto(idx)
   refresh()
 end
-
-local handlers = Commands.handlers()
 
 local function add_cue()
   local name = "Cue " .. tostring(#cues + 1)
@@ -142,7 +139,7 @@ local function draw()
   if UI.button("fire", 232, h - 44, 120, 32, "Fire Selected") then go_to(selected) end
 
   gfx.setfont(3)
-  UI.label(370, h - 34, string.format("%d cues  ·  OSC %s / %s", #cues, OSC.addresses.cue_go, OSC.addresses.cue_back), UI.colors.muted)
+  UI.label(370, h - 34, string.format("%d cues  ·  map MIDI/OSC in Mapping  ·  Space=GO", #cues), UI.colors.muted)
 
   -- keyboard: space = GO, backspace = back
   local ch = gfx.getchar()
@@ -154,11 +151,6 @@ local function draw()
     go_back()
   elseif ch == ("n"):byte() then
     add_cue()
-  end
-
-  -- expose in-process OSC dispatch for tests / future UDP bridge
-  _G.ReaProfessor_OSC = function(path, args)
-    return OSC.dispatch(path, args, handlers)
   end
 end
 

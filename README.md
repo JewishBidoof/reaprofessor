@@ -20,7 +20,16 @@ REAPER already hosts VST/VST3 (and LV2 on Linux), has deep routing, and is scrip
 - [SWS/S&M Extension](https://www.sws-extension.org/) (recommended)
 - [ReaPack](https://reapack.com/) (recommended)
 
-## Quick start (dev machine)
+## Install (ReaPack)
+
+```
+https://github.com/JewishBidoof/reaprofessor/raw/main/index.xml
+```
+
+Extensions → ReaPack → Import a repository… → Synchronize packages → run **ReaProfessor**.
+
+See [docs/REAPACK.md](docs/REAPACK.md) for publishing details.
+
 
 ```bash
 # Install REAPER + SWS + ReaPack + JACK (Linux cloud/dev)
@@ -53,12 +62,13 @@ tests/                  Automated REAPER script checks
 
 ## Status
 
-Active development. Working pieces:
+Active development (v0.3.0):
 
 - 1:1 channel creator (same-strip / double-patch)
 - Snapshot modes: bypass · params · full FX reload
-- Cue list + OSC ExtState/MIDI control service
-- Live Mode + Chain Rack + stage color theme
+- Cue list + **custom** MIDI/OSC mapping (no defaults)
+- Control service + Live Mode + Chain Rack
+- ReaPack metapackage under `Live/ReaProfessor.lua`
 
 ```bash
 ./tools/link_to_reaper.sh
