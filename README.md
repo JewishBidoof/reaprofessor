@@ -29,10 +29,11 @@ https://github.com/JewishBidoof/reaprofessor/raw/main/index.xml
 1. **Extensions → ReaPack → Import a repository…** → paste URL → OK  
 2. **Extensions → ReaPack → Browse packages…** → filter **ReaProfessor** (category **Live**) → Install  
 3. **Actions → Show action list** → search `ReaProfessor` → run **ReaProfessor**  
-4. In the hub, click **Install Extensions → ReaProfessor menu**, then **restart REAPER** once  
-5. Afterwards: **Extensions → ReaProfessor**
+4. Click **Install Extensions → ReaProfessor menu** (also runs automatically when the hub opens)  
+5. **File → Quit** REAPER fully, then open it again  
+6. Use **Extensions → ReaProfessor** (also added to the main toolbar)
 
-> Scripts do not appear under Extensions until step 4–5. They always appear in the Actions list after install.
+> Pure Lua cannot hook the Extensions menu like ReaPack/SWS. The installer writes `reaper-menu.ini`, which REAPER only reads at startup — a full quit/reopen is required once.
 
 See [docs/REAPACK.md](docs/REAPACK.md) for publishing details.
 
@@ -69,12 +70,12 @@ tests/                  Automated REAPER script checks
 
 ## Status
 
-Active development (v0.3.3):
+Active development (v0.3.4):
 
-- Extensions → ReaProfessor menu installer (restart once after install)
-- Prototype mode (`Config.FINALIZED = false`): UI/Mapping browseable; Create/GO/Capture/Recall/Live/Control Service/cue edits do not run until finalized
+- Show/project actions enabled (`Config.FINALIZED = true`)
+- Extensions → ReaProfessor menu installer (writes `reaper-menu.ini` + startup hook + atexit flush; full quit/reopen once)
 - 1:1 channel creator, snapshots, cues, custom MIDI/OSC mapping
-- ReaPack metapackage under `Live/ReaProfessor.lua`
+- ReaPack metapackage under `Live/ReaProfessor.lua` (auto-publish workflow remains disabled)
 
 ```bash
 ./tools/link_to_reaper.sh

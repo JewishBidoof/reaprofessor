@@ -1,5 +1,5 @@
 -- @description ReaProfessor
--- @version 0.3.3
+-- @version 0.3.4
 -- @author JewishBidoof
 -- @metapackage
 -- @provides
@@ -13,6 +13,7 @@
 --   [main] ../scripts/ReaProfessor/control_panel.lua > ReaProfessor/control_panel.lua
 --   [main] ../scripts/ReaProfessor/control_service.lua > ReaProfessor/control_service.lua
 --   [main] ../scripts/ReaProfessor/mapping.lua > ReaProfessor/mapping.lua
+--   [nomain] ../scripts/ReaProfessor/startup_hook.lua > ReaProfessor/startup_hook.lua
 --   [nomain] ../scripts/ReaProfessor/lib/commands.lua > ReaProfessor/lib/commands.lua
 --   [nomain] ../scripts/ReaProfessor/lib/config.lua > ReaProfessor/lib/config.lua
 --   [nomain] ../scripts/ReaProfessor/lib/data.lua > ReaProfessor/lib/data.lua
@@ -24,10 +25,10 @@
 --   [nomain] ../scripts/ReaProfessor/lib/ui.lua > ReaProfessor/lib/ui.lua
 --   [data] ../resources/osc/ReaProfessor.ReaperOSC > ReaProfessor.ReaperOSC
 -- @changelog
---   + Prototype mode: all show/project commands gated until finalized
---   + Extensions → ReaProfessor menu installer
+--   + Enable show/project actions (Config.FINALIZED)
+--   + Reliable Extensions menu install (atexit + startup hook)
 --   + Fix gfx crash when opening panels from hub
 -- @about
 --   Live-oriented REAPER toolkit inspired by LiveProfessor 2.
---   Run Actions → ReaProfessor, then "Install Extensions menu".
---   Restart REAPER once to see Extensions → ReaProfessor.
+--   Run Actions → ReaProfessor (or Install Extensions menu), then File → Quit and reopen.
+--   Afterwards: Extensions → ReaProfessor.
