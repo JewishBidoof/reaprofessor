@@ -49,11 +49,13 @@ if ! grep -q '^OK$' "$RESULT"; then
 fi
 
 # Required keys
-for key in version sws reapack modules cue_go channels_same channels_double snap_bypass snap_params snap_full maps_empty_default midi_match midi_no_default osc_match osc_unmapped_ignored; do
+for key in version sws reapack modules cue_go cue_missing cue_link channels_same channels_double snap_bypass snap_params snap_full maps_empty_default midi_match midi_no_default osc_match osc_unmapped_ignored; do
   grep -q "^${key}=" "$RESULT" || { echo "Missing key: $key" >&2; exit 1; }
 done
 
 grep -q '^cue_go=true$' "$RESULT" || { echo "cue_go did not succeed" >&2; exit 1; }
+grep -q '^cue_missing=true$' "$RESULT" || { echo "missing snapshot cue should fail clearly" >&2; exit 1; }
+grep -q '^cue_link=true$' "$RESULT" || { echo "linked cue fire failed" >&2; exit 1; }
 grep -q '^channels_same=true$' "$RESULT" || { echo "channel create failed" >&2; exit 1; }
 grep -q '^snap_full=true$' "$RESULT" || { echo "full snapshot reload failed" >&2; exit 1; }
 grep -q '^maps_empty_default=true$' "$RESULT" || { echo "maps should start empty" >&2; exit 1; }

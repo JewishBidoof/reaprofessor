@@ -146,11 +146,7 @@ function Data.load_cues()
   local raw = proj_ext_get(CUES_KEY)
   local cues = Data.decode(raw)
   if type(cues) ~= "table" then
-    cues = {
-      { id = "cue_1", name = "Top of show", kind = "snapshot", payload = { snapshot = "Default" }, notes = "" },
-      { id = "cue_2", name = "Song 1", kind = "snapshot", payload = { snapshot = "Song 1" }, notes = "" },
-      { id = "cue_3", name = "Song 2", kind = "snapshot", payload = { snapshot = "Song 2" }, notes = "" },
-    }
+    cues = {}
   end
   return cues
 end
