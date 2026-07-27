@@ -92,6 +92,50 @@ local ok, err = pcall(function()
   Data.recall_snapshot(snap_full, { mode = "full" })
   local full_ok = reaper.TrackFX_GetCount(fx_tr) >= 1
 
+  -- Multi-JSFX chain: wipe + wrong-FX replace must restore the full nested FXCHAIN
+  for i = reaper.TrackFX_GetCount(fx_tr) - 1, 0, -1 do reaper.TrackFX_Delete(fx_tr, i) end
+  local js_names = {
+    "JS: Filters/resonantlowpass",
+    "JS: Delay/delay",
+    "JS: Utility/volume",
+  }
+  local js_built = 0
+  for _, n in ipairs(js_names) do
+    if reaper.TrackFX_AddByName(fx_tr, n, false, -1) >= 0 then js_built = js_built + 1 end
+  end
+  local js_full_ok = false
+  local js_replace_ok = false
+  if js_built >= 2 then
+    if reaper.TrackFX_GetNumParams(fx_tr, 0) > 0 then
+      if reaper.TrackFX_SetParamNormalized then
+        reaper.TrackFX_SetParamNormalized(fx_tr, 0, 0, 0.42)
+      else
+        reaper.TrackFX_SetParam(fx_tr, 0, 0, 0.42)
+      end
+    end
+    reaper.TrackFX_SetEnabled(fx_tr, 1, false)
+    local snap_js = Data.capture_snapshot("JSChain", { mode = "full", selected_only = false })
+    local nested = 0
+    local fxchain = snap_js.tracks[1] and snap_js.tracks[1].fxchain
+    if fxchain then for _ in fxchain:gmatch("\n<[JV]") do nested = nested + 1 end end
+    local not_trunc = nested >= js_built
+
+    for i = reaper.TrackFX_GetCount(fx_tr) - 1, 0, -1 do reaper.TrackFX_Delete(fx_tr, i) end
+    Data.recall_snapshot(snap_js, { mode = "full" })
+    js_full_ok = not_trunc and reaper.TrackFX_GetCount(fx_tr) == js_built
+      and reaper.TrackFX_GetEnabled(fx_tr, 1) == false
+
+    for i = reaper.TrackFX_GetCount(fx_tr) - 1, 0, -1 do reaper.TrackFX_Delete(fx_tr, i) end
+    reaper.TrackFX_AddByName(fx_tr, "ReaGate", false, -1)
+    reaper.TrackFX_AddByName(fx_tr, "ReaVerbate", false, -1)
+    Data.recall_snapshot(snap_js, { mode = "full" })
+    js_replace_ok = reaper.TrackFX_GetCount(fx_tr) == js_built
+      and reaper.TrackFX_GetEnabled(fx_tr, 1) == false
+  else
+    js_full_ok = true -- skip if JSFX unavailable in this REAPER install
+    js_replace_ok = true
+  end
+
   -- Persist snapshots so cue GO can resolve them by name (same as the Snapshots UI).
   Data.save_snapshots({ snap_bypass, snap_params, snap_full })
 
@@ -194,6 +238,8 @@ local ok, err = pcall(function()
   add("snap_bypass", bypass_recalled)
   add("snap_params", params_ok)
   add("snap_full", full_ok)
+  add("snap_js_full", js_full_ok)
+  add("snap_js_replace", js_replace_ok)
   add("rec_strip_skip", rec_skip_ok)
   add("cue_go", cue_ok)
   add("cue_missing", cue_miss)

@@ -1,5 +1,5 @@
 -- @description ReaProfessor ExtState data helpers
--- @version 0.3.0
+-- @version 0.3.7
 -- @author JewishBidoof
 -- @noindex
 
@@ -14,8 +14,8 @@ local OSC_KEY = "osc_map_json"
 
 -- Snapshot recall modes:
 --   bypass  = only FX enable/bypass (+ mute/solo)
---   params  = bypass + parameter values (no add/remove FX)
---   full    = rebuild FX chain (delete/add by name) then apply params/bypass
+--   params  = bypass + normalized parameter values (matched by FX identity)
+--   full    = restore exact FXCHAIN chunk (fallback: rebuild by name + params)
 Data.SNAPSHOT_MODES = { "bypass", "params", "full" }
 
 local function json_escape(s)
@@ -214,36 +214,138 @@ function Data.new_id(prefix)
   return string.format("%s_%d_%d", prefix or "id", os.time(), math.random(1000, 9999))
 end
 
-local function fx_add_name(fx_name)
-  -- Prefer short name after type prefix for AddByName
-  local short = tostring(fx_name or ""):gsub("^[^:]+:%s*", "")
-  -- Strip trailing parenthetical vendor when present for Cockos
-  return short
+--- Extract a REAPER state-chunk block like <FXCHAIN ... > (nested <> aware).
+-- Depth starts at 1 for the opening tag itself. Starting at 0 incorrectly
+-- closes on the first nested plugin's trailing '>' and truncates the chain.
+local function extract_chunk_block(chunk, tag)
+  if not chunk or not tag then return nil end
+  local open = "<" .. tag
+  local start = 1
+  while true do
+    start = chunk:find(open, start, true)
+    if not start then return nil end
+    -- Require a real tag boundary: "<TAG" then whitespace/newline/CR (not "<TAGFOO").
+    local after = start + #open
+    local ch = chunk:sub(after, after)
+    if ch == "" or ch:match("[%s\r\n]") then
+      break
+    end
+    start = after
+  end
+  -- Already inside the opening '<' of this block.
+  local depth = 1
+  local i = start + 1
+  while i <= #chunk do
+    local c = chunk:sub(i, i)
+    if c == "<" then
+      depth = depth + 1
+    elseif c == ">" then
+      depth = depth - 1
+      if depth == 0 then
+        return chunk:sub(start, i)
+      end
+    end
+    i = i + 1
+  end
+  return nil
+end
+
+local function replace_chunk_block(chunk, tag, new_block)
+  local old = extract_chunk_block(chunk, tag)
+  if old and new_block and new_block ~= "" then
+    local s, e = chunk:find(old, 1, true)
+    if s then
+      return chunk:sub(1, s - 1) .. new_block .. chunk:sub(e + 1), true
+    end
+  end
+  if (not old) and new_block and new_block ~= "" then
+    -- Insert before the track's final closing '>'
+    local pos = chunk:find("\n>\n%s*$") or chunk:find("\n>$")
+    if pos then
+      return chunk:sub(1, pos) .. new_block .. "\n" .. chunk:sub(pos + 1), true
+    end
+  end
+  if new_block == nil or new_block == "" then
+    if old then
+      local s, e = chunk:find(old, 1, true)
+      if s then return chunk:sub(1, s - 1) .. chunk:sub(e + 1), true end
+    end
+  end
+  return chunk, false
+end
+
+-- Exported for harnesses / diagnostics.
+function Data.extract_chunk_block(chunk, tag)
+  return extract_chunk_block(chunk, tag)
+end
+
+function Data.replace_chunk_block(chunk, tag, new_block)
+  return replace_chunk_block(chunk, tag, new_block)
+end
+
+local function get_param(tr, fi, pi)
+  if reaper.TrackFX_GetParamNormalized then
+    return reaper.TrackFX_GetParamNormalized(tr, fi, pi)
+  end
+  return reaper.TrackFX_GetParam(tr, fi, pi)
+end
+
+local function set_param(tr, fi, pi, value)
+  if value == nil then return end
+  if reaper.TrackFX_SetParamNormalized then
+    reaper.TrackFX_SetParamNormalized(tr, fi, pi, value)
+  else
+    reaper.TrackFX_SetParam(tr, fi, pi, value)
+  end
+end
+
+local function fx_add_candidates(fx)
+  local list = {}
+  local function push(v)
+    if v and v ~= "" then list[#list + 1] = v end
+  end
+  local typ = fx.fx_type or ""
+  local ident = fx.fx_ident or ""
+  if typ == "JS" or typ:find("JS", 1, true) == 1 then
+    push("JS:" .. ident)
+    push("JS: " .. ident)
+    push(ident)
+  end
+  push(ident)
+  push(fx.name)
+  if fx.name then
+    push(fx.name:gsub("^[^:]+:%s*", ""))
+  end
+  return list
 end
 
 local function capture_fx(tr, fi, mode)
   local _, fx_name = reaper.TrackFX_GetFXName(tr, fi, "")
   local bypassed = reaper.TrackFX_GetEnabled(tr, fi) == false
-  local entry = { name = fx_name, bypassed = bypassed }
+  local offline = false
+  if reaper.TrackFX_GetOffline then
+    offline = reaper.TrackFX_GetOffline(tr, fi) and true or false
+  end
+  local entry = {
+    name = fx_name,
+    bypassed = bypassed,
+    offline = offline,
+    params_normalized = true,
+  }
+  if reaper.TrackFX_GetNamedConfigParm then
+    local ok, typ = reaper.TrackFX_GetNamedConfigParm(tr, fi, "fx_type")
+    if ok then entry.fx_type = typ end
+    local ok2, ident = reaper.TrackFX_GetNamedConfigParm(tr, fi, "fx_ident")
+    if ok2 then entry.fx_ident = ident end
+  end
   if mode == "bypass" then return entry end
 
   local params = {}
   local pc = reaper.TrackFX_GetNumParams(tr, fi)
-  local limit = (mode == "full") and pc or math.min(pc, 64)
-  for pi = 0, limit - 1 do
-    params[#params + 1] = reaper.TrackFX_GetParam(tr, fi, pi)
+  for pi = 0, pc - 1 do
+    params[#params + 1] = get_param(tr, fi, pi)
   end
   entry.params = params
-
-  if mode == "full" then
-    -- Store opaque FX state when available (REAPER 6.37+)
-    if reaper.TrackFX_GetNamedConfigParm then
-      local ok, typ = reaper.TrackFX_GetNamedConfigParm(tr, fi, "fx_type")
-      if ok then entry.fx_type = typ end
-      local ok2, ident = reaper.TrackFX_GetNamedConfigParm(tr, fi, "fx_ident")
-      if ok2 then entry.fx_ident = ident end
-    end
-  end
   return entry
 end
 
@@ -282,7 +384,7 @@ function Data.capture_snapshot(name, opts)
     for fi = 0, fx_count - 1 do
       fx_list[#fx_list + 1] = capture_fx(tr, fi, mode)
     end
-    tracks[#tracks + 1] = {
+    local row = {
       name = tname,
       guid = reaper.GetTrackGUID(tr),
       role = target.role,
@@ -290,6 +392,14 @@ function Data.capture_snapshot(name, opts)
       solo = reaper.GetMediaTrackInfo_Value(tr, "I_SOLO") > 0,
       fx = fx_list,
     }
+    -- Full mode: also store exact FXCHAIN chunk (authoritative for JSFX/VST state).
+    if mode == "full" then
+      local ok, chunk = reaper.GetTrackStateChunk(tr, "", false)
+      if ok and chunk then
+        row.fxchain = extract_chunk_block(chunk, "FXCHAIN")
+      end
+    end
+    tracks[#tracks + 1] = row
   end
 
   return {
@@ -303,14 +413,43 @@ function Data.capture_snapshot(name, opts)
 end
 
 local function apply_bypass_and_params(tr, fi, fx, mode)
+  if fx.offline ~= nil and reaper.TrackFX_SetOffline then
+    reaper.TrackFX_SetOffline(tr, fi, fx.offline and true or false)
+  end
   if fx.bypassed ~= nil then
     reaper.TrackFX_SetEnabled(tr, fi, not fx.bypassed)
   end
-  if mode ~= "bypass" and type(fx.params) == "table" then
-    for pi = 1, #fx.params do
-      reaper.TrackFX_SetParam(tr, fi, pi - 1, fx.params[pi])
+  if mode == "bypass" then return end
+  if type(fx.params) ~= "table" then return end
+
+  local use_norm = fx.params_normalized
+  if use_norm == nil then
+    -- Legacy snapshots: detect likely-normalized values (all within 0..1).
+    use_norm = true
+    for i = 1, #fx.params do
+      local v = fx.params[i]
+      if type(v) == "number" and (v < -0.001 or v > 1.001) then
+        use_norm = false
+        break
+      end
     end
   end
+
+  for pi = 1, #fx.params do
+    local v = fx.params[pi]
+    if use_norm then
+      set_param(tr, fi, pi - 1, v)
+    else
+      -- Legacy raw values captured with TrackFX_GetParam on JSFX
+      reaper.TrackFX_SetParam(tr, fi, pi - 1, v)
+    end
+  end
+end
+
+local function fx_identity_key(fx)
+  if not fx then return "" end
+  if fx.fx_ident and fx.fx_ident ~= "" then return tostring(fx.fx_ident):lower() end
+  return tostring(fx.name or ""):gsub("^[^:]+:%s*", ""):lower()
 end
 
 local function recall_track_bypass_or_params(tr, src, mode)
@@ -321,9 +460,55 @@ local function recall_track_bypass_or_params(tr, src, mode)
     reaper.SetMediaTrackInfo_Value(tr, "I_SOLO", src.solo and 1 or 0)
   end
   if type(src.fx) ~= "table" then return end
+
   local fx_count = reaper.TrackFX_GetCount(tr)
-  for fi = 1, math.min(#src.fx, fx_count) do
-    apply_bypass_and_params(tr, fi - 1, src.fx[fi], mode)
+  local used = {}
+  for si = 1, #src.fx do
+    local want = src.fx[si]
+    local want_key = fx_identity_key(want)
+    local matched = nil
+    -- Prefer identity match over positional (survives reorder)
+    for fi = 0, fx_count - 1 do
+      if not used[fi] then
+        local _, name = reaper.TrackFX_GetFXName(tr, fi, "")
+        local ident = ""
+        if reaper.TrackFX_GetNamedConfigParm then
+          local ok, id = reaper.TrackFX_GetNamedConfigParm(tr, fi, "fx_ident")
+          if ok then ident = id end
+        end
+        local key = ident ~= "" and ident:lower() or name:gsub("^[^:]+:%s*", ""):lower()
+        if key == want_key then
+          matched = fi
+          break
+        end
+      end
+    end
+    if matched == nil and (si - 1) < fx_count and not used[si - 1] then
+      matched = si - 1 -- positional fallback
+    end
+    if matched ~= nil then
+      used[matched] = true
+      apply_bypass_and_params(tr, matched, want, mode)
+    end
+  end
+end
+
+local function recall_track_full_by_add(tr, src)
+  for i = reaper.TrackFX_GetCount(tr) - 1, 0, -1 do
+    reaper.TrackFX_Delete(tr, i)
+  end
+  if type(src.fx) ~= "table" then return end
+  for _, fx in ipairs(src.fx) do
+    local idx = -1
+    for _, name in ipairs(fx_add_candidates(fx)) do
+      idx = reaper.TrackFX_AddByName(tr, name, false, -1)
+      if idx >= 0 then break end
+    end
+    if idx >= 0 then
+      apply_bypass_and_params(tr, idx, fx, "full")
+    else
+      reaper.ShowConsoleMsg("[ReaProfessor] Full recall: could not add FX '" .. tostring(fx.name or fx.fx_ident) .. "'\n")
+    end
   end
 end
 
@@ -334,28 +519,36 @@ local function recall_track_full(tr, src)
   if src.solo ~= nil then
     reaper.SetMediaTrackInfo_Value(tr, "I_SOLO", src.solo and 1 or 0)
   end
-  -- Remove existing FX then rebuild
-  for i = reaper.TrackFX_GetCount(tr) - 1, 0, -1 do
-    reaper.TrackFX_Delete(tr, i)
-  end
-  if type(src.fx) ~= "table" then return end
-  for _, fx in ipairs(src.fx) do
-    local add_name = fx.fx_ident or fx_add_name(fx.name)
-    local idx = reaper.TrackFX_AddByName(tr, add_name, false, -1)
-    if idx < 0 then
-      -- fallback to full displayed name
-      idx = reaper.TrackFX_AddByName(tr, fx.name or "", false, -1)
+
+  -- Prefer exact FXCHAIN chunk restore (handles JSFX raw sliders, order, bypass).
+  if type(src.fxchain) == "string" and src.fxchain:find("<FXCHAIN", 1, true) then
+    local want_count = type(src.fx) == "table" and #src.fx or nil
+    -- Clear existing FX first so a failed/partial chunk write cannot leave orphans.
+    for i = reaper.TrackFX_GetCount(tr) - 1, 0, -1 do
+      reaper.TrackFX_Delete(tr, i)
     end
-    if idx >= 0 then
-      apply_bypass_and_params(tr, idx, fx, "full")
+    local ok, chunk = reaper.GetTrackStateChunk(tr, "", false)
+    if ok and chunk then
+      local new_chunk, replaced = replace_chunk_block(chunk, "FXCHAIN", src.fxchain)
+      if replaced and reaper.SetTrackStateChunk(tr, new_chunk, false) then
+        local got = reaper.TrackFX_GetCount(tr)
+        if want_count == nil or got == want_count then
+          return
+        end
+        reaper.ShowConsoleMsg(string.format(
+          "[ReaProfessor] Full recall: FXCHAIN apply count mismatch (got %d want %d); rebuilding\n",
+          got, want_count))
+      end
     end
   end
+  -- Fallback for legacy snapshots without fxchain, or failed chunk apply
+  recall_track_full_by_add(tr, src)
 end
 
 local function find_track_for_src(src, used)
   if src.guid and reaper.BR_GetMediaTrackByGUID then
     local tr = reaper.BR_GetMediaTrackByGUID(0, src.guid)
-    if tr then return tr end
+    if tr and not used[tr] then return tr end
   end
   if src.guid then
     local n = reaper.CountTracks(0)
@@ -368,10 +561,10 @@ local function find_track_for_src(src, used)
     local n = reaper.CountTracks(0)
     for i = 0, n - 1 do
       local tr = reaper.GetTrack(0, i)
-      if used[tr] then goto continue end
-      local _, name = reaper.GetTrackName(tr)
-      if name == src.name then return tr end
-      ::continue::
+      if not used[tr] then
+        local _, name = reaper.GetTrackName(tr)
+        if name == src.name then return tr end
+      end
     end
   end
   return nil

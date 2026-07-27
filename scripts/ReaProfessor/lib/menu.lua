@@ -1,5 +1,5 @@
 -- @description ReaProfessor action registration (no Extensions menu hijack)
--- @version 0.3.6
+-- @version 0.3.7
 -- @author JewishBidoof
 -- @noindex
 --

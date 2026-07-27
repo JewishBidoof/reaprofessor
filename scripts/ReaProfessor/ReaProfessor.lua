@@ -1,5 +1,5 @@
 -- @description ReaProfessor
--- @version 0.3.6
+-- @version 0.3.7
 -- @author JewishBidoof
 -- @about Live plugin host toolkit for REAPER (cue lists, snapshots, 1:1 channels, custom MIDI/OSC).
 -- @noindex
