@@ -1,5 +1,5 @@
 -- @description ReaProfessor
--- @version 0.3.4
+-- @version 0.3.5
 -- @author JewishBidoof
 -- @metapackage
 -- @provides
@@ -25,9 +25,9 @@
 --   [nomain] ../scripts/ReaProfessor/lib/ui.lua > ReaProfessor/lib/ui.lua
 --   [data] ../resources/osc/ReaProfessor.ReaperOSC > ReaProfessor.ReaperOSC
 -- @changelog
---   + Enable show/project actions (Config.FINALIZED)
---   + Reliable Extensions menu install (atexit + startup hook)
---   + Fix gfx crash when opening panels from hub
+--   + Fix cues: + CUE captures FX snapshot and links it; GO reports missing targets
+--   + Empty cue list by default (no fake cues pointing at missing snaps)
+--   + Enable show/project actions; Extensions menu installer
 -- @about
 --   Live-oriented REAPER toolkit inspired by LiveProfessor 2.
 --   Run Actions → ReaProfessor (or Install Extensions menu), then File → Quit and reopen.

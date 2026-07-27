@@ -70,11 +70,12 @@ tests/                  Automated REAPER script checks
 
 ## Status
 
-Active development (v0.3.4):
+Active development (v0.3.5):
 
+- Cue list: `+ CUE` captures current FX as a snapshot and links it; GO/Back report missing targets
 - Show/project actions enabled (`Config.FINALIZED = true`)
-- Extensions → ReaProfessor menu installer (writes `reaper-menu.ini` + startup hook + atexit flush; full quit/reopen once)
-- 1:1 channel creator, snapshots, cues, custom MIDI/OSC mapping
+- Extensions → ReaProfessor menu installer (full quit/reopen once)
+- 1:1 channel creator, snapshots, custom MIDI/OSC mapping
 - ReaPack metapackage under `Live/ReaProfessor.lua` (auto-publish workflow remains disabled)
 
 ```bash
