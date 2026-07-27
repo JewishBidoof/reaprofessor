@@ -26,7 +26,7 @@ echo "REAPER resource: $RESOURCE"
 echo
 echo "Next steps in REAPER:"
 echo "  1) Actions → Show action list → Load → Scripts/ReaProfessor/ReaProfessor.lua"
-echo "  2) Run ReaProfessor (auto-installs Extensions menu entry)"
-echo "  3) File → Quit, reopen → Extensions → ReaProfessor"
+echo "  2) Run ReaProfessor (Actions list — Extensions menu is not modified)"
+echo "  3) If an older build nested your Extensions items: hub → Restore Extensions menu → Quit/reopen"
 echo "Optional: Preferences → Control/OSC/web → pattern config ReaProfessor."
 

@@ -1,5 +1,5 @@
 -- @description ReaProfessor
--- @version 0.3.5
+-- @version 0.3.6
 -- @author JewishBidoof
 -- @metapackage
 -- @provides
@@ -25,10 +25,10 @@
 --   [nomain] ../scripts/ReaProfessor/lib/ui.lua > ReaProfessor/lib/ui.lua
 --   [data] ../resources/osc/ReaProfessor.ReaperOSC > ReaProfessor.ReaperOSC
 -- @changelog
---   + Fix cues: + CUE captures FX snapshot and links it; GO reports missing targets
---   + Empty cue list by default (no fake cues pointing at missing snaps)
---   + Enable show/project actions; Extensions menu installer
+--   + Stop customizing Extensions menu (was nesting ReaPack/SWS); restore stock menu
+--   + Fix cues: + CUE captures FX snapshot and links it
+--   + Actions-list registration only
 -- @about
 --   Live-oriented REAPER toolkit inspired by LiveProfessor 2.
---   Run Actions → ReaProfessor (or Install Extensions menu), then File → Quit and reopen.
---   Afterwards: Extensions → ReaProfessor.
+--   Run Actions → Show action list → ReaProfessor.
+--   Does not modify the Extensions menu (keeps ReaPack/SWS top-level).

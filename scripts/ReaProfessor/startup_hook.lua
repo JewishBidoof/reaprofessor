@@ -1,6 +1,5 @@
--- ReaProfessor startup hook — keeps Extensions menu entry present in reaper-menu.ini.
--- REAPER auto-runs Scripts/__startup.lua when present.
--- Menu changes apply on the next launch after this file writes reaper-menu.ini.
+-- ReaProfessor startup hook — register Actions only; never customize Extensions.
+-- (Earlier builds wrote [Main extensions] and nested other extensions in a submenu.)
 
 local res = reaper.GetResourcePath()
 local candidates = {
@@ -15,7 +14,6 @@ for _, p in ipairs(candidates) do
     break
   end
 end
-
 if not menu_path then return end
 
 local lib_dir = menu_path:match("(.+[\\/])")
@@ -24,7 +22,10 @@ package.path = lib_dir .. "?.lua;" .. package.path
 local ok, Menu = pcall(require, "menu")
 if not ok or not Menu then return end
 
+-- Undo any prior menu.ini hijack, then keep the hub registered in Actions.
+Menu.restore_extensions_menu()
+Menu.remove_startup_hook()
 local hub = Menu.find_hub and Menu.find_hub() or nil
-if not hub then return end
-
-Menu.ensure(hub)
+if hub then
+  Menu.register_hub(hub)
+end
