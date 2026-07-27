@@ -26,9 +26,16 @@ REAPER already hosts VST/VST3 (and LV2 on Linux), has deep routing, and is scrip
 https://github.com/JewishBidoof/reaprofessor/raw/main/index.xml
 ```
 
-Extensions → ReaPack → Import a repository… → Synchronize packages → run **ReaProfessor**.
+1. **Extensions → ReaPack → Import a repository…** → paste URL → OK  
+2. **Extensions → ReaPack → Browse packages…** → filter **ReaProfessor** (category **Live**) → Install  
+3. **Actions → Show action list** → search `ReaProfessor` → run **ReaProfessor**  
+4. In the hub, click **Install Extensions → ReaProfessor menu**, then **restart REAPER** once  
+5. Afterwards: **Extensions → ReaProfessor**
+
+> Scripts do not appear under Extensions until step 4–5. They always appear in the Actions list after install.
 
 See [docs/REAPACK.md](docs/REAPACK.md) for publishing details.
+
 
 
 ```bash
@@ -62,16 +69,14 @@ tests/                  Automated REAPER script checks
 
 ## Status
 
-Active development (v0.3.0):
+Active development (v0.3.3):
 
-- 1:1 channel creator (same-strip / double-patch)
-- Snapshot modes: bypass · params · full FX reload
-- Cue list + **custom** MIDI/OSC mapping (no defaults)
-- Control service + Live Mode + Chain Rack
+- Extensions → ReaProfessor menu installer (restart once after install)
+- Prototype mode (`Config.FINALIZED = false`): UI/Mapping browseable; Create/GO/Capture/Recall/Live/Control Service/cue edits do not run until finalized
+- 1:1 channel creator, snapshots, cues, custom MIDI/OSC mapping
 - ReaPack metapackage under `Live/ReaProfessor.lua`
 
 ```bash
 ./tools/link_to_reaper.sh
-./tools/smoke_test.sh
 ```
 

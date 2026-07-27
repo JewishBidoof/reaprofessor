@@ -13,6 +13,7 @@ package.path = script_dir .. "lib/?.lua;" .. res .. "lib/?.lua;" .. package.path
 local UI = require("ui")
 local Data = require("data")
 local Commands = require("commands")
+local Config = require("config")
 
 local cues = Data.load_cues()
 local meta = Data.load_meta()
@@ -28,21 +29,25 @@ local function refresh()
 end
 
 local function go_next()
+  if not Config.actions_enabled() then return Config.deny_action("Cue GO") end
   Commands.cue_go()
   refresh()
 end
 
 local function go_back()
+  if not Config.actions_enabled() then return Config.deny_action("Cue Back") end
   Commands.cue_back()
   refresh()
 end
 
 local function go_to(idx)
+  if not Config.actions_enabled() then return Config.deny_action("Cue Fire") end
   Commands.cue_goto(idx)
   refresh()
 end
 
 local function add_cue()
+  if not Config.actions_enabled() then return Config.deny_action("Add Cue") end
   local name = "Cue " .. tostring(#cues + 1)
   cues[#cues + 1] = {
     id = Data.new_id("cue"),
@@ -56,6 +61,7 @@ local function add_cue()
 end
 
 local function delete_cue()
+  if not Config.actions_enabled() then return Config.deny_action("Delete Cue") end
   if #cues == 0 then return end
   table.remove(cues, selected)
   selected = math.max(1, math.min(selected, #cues))
@@ -65,6 +71,7 @@ local function delete_cue()
 end
 
 local function rename_selected()
+  if not Config.actions_enabled() then return Config.deny_action("Rename Cue") end
   if not cues[selected] then return end
   local retval, new_name = reaper.GetUserInputs("Rename cue", 1, "Name:,extrawidth=200", cues[selected].name)
   if retval and new_name ~= "" then
@@ -116,8 +123,10 @@ local function draw()
             and gfx.mouse_y >= y and gfx.mouse_y <= y + row_h - 2
     if hit and gfx.mouse_cap & 1 == 1 then
       selected = i
-      meta.cue_index = selected
-      Data.save_meta(meta)
+      if Config.actions_enabled() then
+        meta.cue_index = selected
+        Data.save_meta(meta)
+      end
     end
     if hit and gfx.mouse_cap & 2 == 2 then
       -- right-click rename

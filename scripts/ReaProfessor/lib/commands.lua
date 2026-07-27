@@ -1,5 +1,5 @@
 -- @description ReaProfessor central command handlers
--- @version 0.3.0
+-- @version 0.3.3
 -- @author JewishBidoof
 -- @noindex
 
@@ -50,7 +50,14 @@ local function find_snapshot(snaps, key)
   return nil, nil
 end
 
+--- Block show/project mutations until Config.FINALIZED (smoke may flip the flag).
+local function require_actions(name)
+  local Config = require("config")
+  return Config.require_enabled(name)
+end
+
 function Commands.cue_go()
+  if not require_actions("Cue GO") then return false end
   local Data = require("data")
   local cues = Data.load_cues()
   local meta = Data.load_meta()
@@ -78,6 +85,7 @@ function Commands.cue_go()
 end
 
 function Commands.cue_back()
+  if not require_actions("Cue Back") then return false end
   local Data = require("data")
   local cues = Data.load_cues()
   local meta = Data.load_meta()
@@ -96,6 +104,7 @@ function Commands.cue_back()
 end
 
 function Commands.cue_goto(n)
+  if not require_actions("Cue Fire") then return false end
   local Data = require("data")
   local cues = Data.load_cues()
   local meta = Data.load_meta()
@@ -114,6 +123,7 @@ function Commands.cue_goto(n)
 end
 
 function Commands.snap_recall(key)
+  if not require_actions("Snapshot Recall") then return false end
   local Data = require("data")
   local snaps = Data.load_snapshots()
   local snap = select(1, find_snapshot(snaps, key))
@@ -122,6 +132,7 @@ function Commands.snap_recall(key)
 end
 
 function Commands.set_snapshot_mode(mode)
+  if not require_actions("Snapshot mode") then return false end
   local Data = require("data")
   local meta = Data.load_meta()
   mode = tostring(mode or "")
@@ -132,6 +143,7 @@ function Commands.set_snapshot_mode(mode)
 end
 
 function Commands.set_channel_mode(mode)
+  if not require_actions("Channel mode") then return false end
   local Data = require("data")
   local meta = Data.load_meta()
   mode = tostring(mode or "")
@@ -142,6 +154,7 @@ function Commands.set_channel_mode(mode)
 end
 
 function Commands.create_channels(count, mode)
+  if not require_actions("Create Channels") then return false end
   local Data, _, Routing = load_deps()
   local meta = Data.load_meta()
   mode = mode or meta.channel_mode or "same_strip"
@@ -150,6 +163,7 @@ function Commands.create_channels(count, mode)
 end
 
 function Commands.apply_record_safe(mode)
+  if not require_actions("Apply record-safe") then return false end
   local Data, _, Routing = load_deps()
   local meta = Data.load_meta()
   Routing.apply_record_safe(mode or meta.channel_mode)
@@ -157,6 +171,7 @@ function Commands.apply_record_safe(mode)
 end
 
 function Commands.run_named(command, arg)
+  if not require_actions(command or "Command") then return false end
   if command == "cue_go" then return Commands.cue_go()
   elseif command == "cue_back" then return Commands.cue_back()
   elseif command == "cue_goto" then return Commands.cue_goto(arg)

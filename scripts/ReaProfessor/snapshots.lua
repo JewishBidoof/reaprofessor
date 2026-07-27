@@ -11,6 +11,7 @@ package.path = script_dir .. "lib/?.lua;" .. res .. "lib/?.lua;" .. package.path
 
 local UI = require("ui")
 local Data = require("data")
+local Config = require("config")
 
 local snaps = Data.load_snapshots()
 local meta = Data.load_meta()
@@ -18,9 +19,10 @@ local selected = 1
 local mode = meta.snapshot_mode or "params"
 local selected_only = meta.selected_only and true or false
 local running = true
-local status = ""
+local status = Config.actions_enabled() and "" or "Prototype — Capture/Recall disabled"
 
 local function capture()
+  if not Config.actions_enabled() then return Config.deny_action("Snapshot Capture") end
   local retval, name = reaper.GetUserInputs("Capture snapshot", 1, "Name:,extrawidth=200", "Snapshot " .. tostring(#snaps + 1))
   if not retval or name == "" then return end
   local snap = Data.capture_snapshot(name, { mode = mode, selected_only = selected_only })
@@ -35,6 +37,7 @@ local function capture()
 end
 
 local function recall()
+  if not Config.actions_enabled() then return Config.deny_action("Snapshot Recall") end
   local snap = snaps[selected]
   if not snap then return end
   Data.recall_snapshot(snap, { mode = mode, selected_only = selected_only })
@@ -43,6 +46,7 @@ local function recall()
 end
 
 local function delete_selected()
+  if not Config.actions_enabled() then return Config.deny_action("Delete Snapshot") end
   if not snaps[selected] then return end
   table.remove(snaps, selected)
   selected = math.max(1, math.min(selected, #snaps))
@@ -55,8 +59,10 @@ local function mode_btn(id, x, y, w, label, value)
   local bg = (mode == value) and UI.colors.selected or UI.colors.panel
   if UI.button(id, x, y, w, 28, label, { bg = bg }) then
     mode = value
-    meta.snapshot_mode = mode
-    Data.save_meta(meta)
+    if Config.actions_enabled() then
+      meta.snapshot_mode = mode
+      Data.save_meta(meta)
+    end
   end
 end
 
@@ -84,8 +90,10 @@ local function draw()
   local sel_bg = selected_only and UI.colors.selected or UI.colors.panel
   if UI.button("sel", 520, 52, 180, 28, selected_only and "Selected tracks" or "All (eligible)", { bg = sel_bg }) then
     selected_only = not selected_only
-    meta.selected_only = selected_only
-    Data.save_meta(meta)
+    if Config.actions_enabled() then
+      meta.selected_only = selected_only
+      Data.save_meta(meta)
+    end
   end
 
   gfx.setfont(3)

@@ -12,6 +12,7 @@ package.path = script_dir .. "lib/?.lua;" .. res .. "lib/?.lua;" .. package.path
 local UI = require("ui")
 local Data = require("data")
 local Routing = require("routing")
+local Config = require("config")
 
 local meta = Data.load_meta()
 local count = 16
@@ -19,11 +20,14 @@ local start_in = 1
 local start_out = 1
 local mode = meta.channel_mode or "same_strip"
 local running = true
-local status = "Ready"
+local status = Config.actions_enabled() and "Ready" or "Prototype — Create is disabled"
 
 UI.init("ReaProfessor · Create Channels", 560, 420, 0)
 
 local function create()
+  if not Config.actions_enabled() then
+    return Config.deny_action("Create Channels")
+  end
   local created = Routing.create_channels(count, {
     start_input = start_in,
     start_output = start_out,

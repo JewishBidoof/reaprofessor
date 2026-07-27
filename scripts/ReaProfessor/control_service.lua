@@ -13,6 +13,12 @@ local Data = require("data")
 local OSC = require("osc")
 local MIDI = require("midi")
 local Commands = require("commands")
+local Config = require("config")
+
+if not Config.actions_enabled() then
+  Config.deny_action("Control Service")
+  return
+end
 
 if reaper.GetExtState("ReaProfessor", "control_service") == "1" then
   reaper.ShowConsoleMsg("[ReaProfessor] Control service already running\n")

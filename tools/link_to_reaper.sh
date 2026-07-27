@@ -23,5 +23,10 @@ link_path "$REPO_ROOT/theme/ReaProfessor" "$RESOURCE/ColorThemes/ReaProfessor"
 link_path "$REPO_ROOT/resources/osc/ReaProfessor.ReaperOSC" "$RESOURCE/OSC/ReaProfessor.ReaperOSC"
 
 echo "REAPER resource: $RESOURCE"
-echo "Load Scripts/ReaProfessor/ReaProfessor.lua from the Actions list."
+echo
+echo "Next steps in REAPER:"
+echo "  1) Actions → Show action list → Load → Scripts/ReaProfessor/ReaProfessor.lua"
+echo "  2) Run 'ReaProfessor' (or 'Install Extensions menu')"
+echo "  3) Restart REAPER once → Extensions → ReaProfessor"
 echo "Optional: Preferences → Control/OSC/web → pattern config ReaProfessor."
+
