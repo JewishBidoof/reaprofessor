@@ -1,5 +1,5 @@
 -- @description ReaProfessor
--- @version 0.3.5
+-- @version 0.3.6
 -- @author JewishBidoof
 -- @about Live plugin host toolkit for REAPER (cue lists, snapshots, 1:1 channels, custom MIDI/OSC).
 -- @noindex
@@ -11,7 +11,6 @@ local alt = reaper.GetResourcePath() .. "/Scripts/Live/ReaProfessor/"
 package.path = script_dir .. "lib/?.lua;" .. alt .. "lib/?.lua;" .. res .. "lib/?.lua;" .. package.path
 
 local UI = require("ui")
-local Config = require("config")
 local Menu = require("menu")
 
 local running = true
@@ -21,7 +20,6 @@ local status = ""
 UI.init("ReaProfessor", 560, 620, 0)
 
 -- Safe handoff: quit this gfx script fully, then open the next on a later defer tick.
--- (gfx.quit + dofile in the same cycle is a common REAPER crash.)
 local function open_script(rel)
   local path = script_dir .. rel
   if not reaper.file_exists(path) then
@@ -44,7 +42,7 @@ local buttons = {
   { id = "ctrl", label = "Control Service", file = "control_panel.lua" },
 }
 
-local function install_menu()
+local function restore_menu()
   local hub = script_dir .. "ReaProfessor.lua"
   if not reaper.file_exists(hub) then hub = alt .. "ReaProfessor.lua" end
   local ok, msg = Menu.install(hub)
@@ -61,7 +59,7 @@ local function draw()
   gfx.setfont(1)
   UI.label(24, 52, "Live plugin hosting for REAPER", UI.colors.text)
   gfx.setfont(3)
-  UI.label(24, 78, "Multitrack · snapshots · cues · custom MIDI/OSC", UI.colors.muted)
+  UI.label(24, 78, "Open from Actions list  ·  Extensions menu left untouched", UI.colors.muted)
 
   local y = 110
   local bw, bh = w - 48, 38
@@ -77,8 +75,8 @@ local function draw()
   end
   y = y + 50
 
-  if UI.button("menu", 24, y, bw, bh, "Install Extensions → ReaProfessor menu", { bg = UI.colors.go, fg = {0.05, 0.1, 0.05} }) then
-    install_menu()
+  if UI.button("menu", 24, y, bw, bh, "Restore Extensions menu (fix nesting)", { bg = UI.colors.go, fg = {0.05, 0.1, 0.05} }) then
+    restore_menu()
   end
 
   gfx.setfont(3)
@@ -105,16 +103,12 @@ local function loop()
   reaper.defer(loop)
 end
 
--- Register action + write Extensions menu entry every time the hub opens.
+-- Register in Actions; undo any prior [Main extensions] customization that nested other plugins.
 do
   local hub = script_dir .. "ReaProfessor.lua"
   if not reaper.file_exists(hub) then hub = alt .. "ReaProfessor.lua" end
   local ok, msg = Menu.ensure(hub)
-  if ok then
-    status = "Menu entry ready — quit & reopen REAPER once if Extensions → ReaProfessor is missing"
-  else
-    status = tostring(msg)
-  end
+  status = ok and "Actions registered · Extensions menu left stock (ReaPack/SWS stay top-level)" or tostring(msg)
 end
 
 loop()

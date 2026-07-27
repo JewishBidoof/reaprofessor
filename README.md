@@ -28,12 +28,9 @@ https://github.com/JewishBidoof/reaprofessor/raw/main/index.xml
 
 1. **Extensions → ReaPack → Import a repository…** → paste URL → OK  
 2. **Extensions → ReaPack → Browse packages…** → filter **ReaProfessor** (category **Live**) → Install  
-3. **Actions → Show action list** → search `ReaProfessor` → run **ReaProfessor**  
-4. Click **Install Extensions → ReaProfessor menu** (also runs automatically when the hub opens)  
-5. **File → Quit** REAPER fully, then open it again  
-6. Use **Extensions → ReaProfessor** (also added to the main toolbar)
+3. **Actions → Show action list** → search `ReaProfessor` → run **ReaProfessor**
 
-> Pure Lua cannot hook the Extensions menu like ReaPack/SWS. The installer writes `reaper-menu.ini`, which REAPER only reads at startup — a full quit/reopen is required once.
+> ReaProfessor is opened from the **Actions** list. It does **not** add an Extensions menu item — editing `reaper-menu.ini` nested ReaPack/SWS under a submenu. If a previous build did that, open the hub and click **Restore Extensions menu**.
 
 See [docs/REAPACK.md](docs/REAPACK.md) for publishing details.
 
@@ -70,11 +67,12 @@ tests/                  Automated REAPER script checks
 
 ## Status
 
-Active development (v0.3.5):
+Active development (v0.3.6):
 
-- Cue list: `+ CUE` captures current FX as a snapshot and links it; GO/Back report missing targets
-- Show/project actions enabled (`Config.FINALIZED = true`)
-- Extensions → ReaProfessor menu installer (full quit/reopen once)
+- Actions-list entry only — does **not** customize Extensions (keeps ReaPack/SWS top-level)
+- Hub button **Restore Extensions menu** undoes any prior nesting from older builds
+- Cue list: `+ CUE` captures current FX as a snapshot and links it
+- Show/project actions enabled
 - 1:1 channel creator, snapshots, custom MIDI/OSC mapping
 - ReaPack metapackage under `Live/ReaProfessor.lua` (auto-publish workflow remains disabled)
 
