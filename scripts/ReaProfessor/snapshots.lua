@@ -1,7 +1,7 @@
 -- @description ReaProfessor - Global Snapshots
--- @version 0.1.0
+-- @version 0.2.0
 -- @author ReaProfessor
--- @about Capture and recall lightweight track/FX snapshots (LiveProfessor-style).
+-- @about Capture/recall with mode: bypass-only, params, or full FX chain reload.
 
 local res = reaper.GetResourcePath() .. "/Scripts/ReaProfessor/"
 local src = debug.getinfo(1, "S").source
@@ -12,24 +12,33 @@ local UI = require("ui")
 local Data = require("data")
 
 local snaps = Data.load_snapshots()
+local meta = Data.load_meta()
 local selected = 1
+local mode = meta.snapshot_mode or "params"
+local selected_only = meta.selected_only and true or false
 local running = true
+local status = ""
 
 local function capture()
   local retval, name = reaper.GetUserInputs("Capture snapshot", 1, "Name:,extrawidth=200", "Snapshot " .. tostring(#snaps + 1))
   if not retval or name == "" then return end
-  local snap = Data.capture_snapshot(name)
+  local snap = Data.capture_snapshot(name, { mode = mode, selected_only = selected_only })
   snaps[#snaps + 1] = snap
   Data.save_snapshots(snaps)
   selected = #snaps
-  reaper.ShowConsoleMsg("[ReaProfessor] Captured snapshot: " .. name .. "\n")
+  meta.snapshot_mode = mode
+  meta.selected_only = selected_only
+  Data.save_meta(meta)
+  status = "Captured " .. name .. " (" .. mode .. ")"
+  reaper.ShowConsoleMsg("[ReaProfessor] " .. status .. "\n")
 end
 
 local function recall()
   local snap = snaps[selected]
   if not snap then return end
-  Data.recall_snapshot(snap)
-  reaper.ShowConsoleMsg("[ReaProfessor] Recalled: " .. tostring(snap.name) .. "\n")
+  Data.recall_snapshot(snap, { mode = mode, selected_only = selected_only })
+  status = "Recalled " .. tostring(snap.name) .. " (" .. mode .. ")"
+  reaper.ShowConsoleMsg("[ReaProfessor] " .. status .. "\n")
 end
 
 local function delete_selected()
@@ -39,7 +48,16 @@ local function delete_selected()
   Data.save_snapshots(snaps)
 end
 
-UI.init("ReaProfessor · Snapshots", 640, 440, 0)
+UI.init("ReaProfessor · Snapshots", 720, 500, 0)
+
+local function mode_btn(id, x, y, w, label, value)
+  local bg = (mode == value) and UI.colors.selected or UI.colors.panel
+  if UI.button(id, x, y, w, 28, label, { bg = bg }) then
+    mode = value
+    meta.snapshot_mode = mode
+    Data.save_meta(meta)
+  end
+end
 
 local function draw()
   local w, h = gfx.w, gfx.h
@@ -47,7 +65,7 @@ local function draw()
   gfx.setfont(2)
   UI.label(16, 14, "SNAPSHOTS", UI.colors.accent)
   gfx.setfont(3)
-  UI.label(170, 22, "Track mute/solo + FX params (first 32)", UI.colors.muted)
+  UI.label(170, 22, "Record strips are never modified", UI.colors.muted)
 
   if UI.button("cap", w - 210, 12, 100, 36, "Capture", { bg = UI.colors.go, fg = {0.05, 0.1, 0.05} }) then
     capture()
@@ -56,7 +74,23 @@ local function draw()
     recall()
   end
 
-  local top = 64
+  gfx.setfont(1)
+  UI.label(16, 58, "Recall mode:", UI.colors.text)
+  mode_btn("mb", 130, 52, 110, "Bypass only", "bypass")
+  mode_btn("mp", 250, 52, 110, "Params", "params")
+  mode_btn("mf", 370, 52, 140, "Full FX reload", "full")
+
+  local sel_bg = selected_only and UI.colors.selected or UI.colors.panel
+  if UI.button("sel", 520, 52, 180, 28, selected_only and "Selected tracks" or "All (eligible)", { bg = sel_bg }) then
+    selected_only = not selected_only
+    meta.selected_only = selected_only
+    Data.save_meta(meta)
+  end
+
+  gfx.setfont(3)
+  UI.label(16, 88, "bypass = enable states  ·  params = bypass+values  ·  full = rebuild chain then params", UI.colors.muted)
+
+  local top = 112
   local row_h = 28
   for i, snap in ipairs(snaps) do
     local y = top + (i - 1) * row_h
@@ -69,18 +103,19 @@ local function draw()
     gfx.setfont(1)
     UI.label(24, y + 5, string.format("%02d  %s", i, snap.name or "?"), UI.colors.text)
     local ntracks = type(snap.tracks) == "table" and #snap.tracks or 0
-    UI.label(w - 140, y + 5, ntracks .. " tracks", UI.colors.muted)
+    UI.label(w - 220, y + 5, tostring(snap.mode or "?"), UI.colors.muted)
+    UI.label(w - 120, y + 5, ntracks .. " tr", UI.colors.muted)
   end
 
   if #snaps == 0 then
     gfx.setfont(1)
-    UI.label(24, top + 8, "No snapshots yet — Capture to store current FX state.", UI.colors.muted)
+    UI.label(24, top + 8, "No snapshots yet — Capture to store FX state.", UI.colors.muted)
   end
 
   if UI.button("del", 12, h - 44, 100, 32, "Delete", { bg = UI.colors.danger }) then
     delete_selected()
   end
-  UI.label(130, h - 34, "Tip: name snapshots to match cue targets", UI.colors.muted)
+  UI.label(130, h - 34, status, UI.colors.muted)
 
   local ch = gfx.getchar()
   if ch == 27 or ch < 0 then running = false

@@ -1,5 +1,5 @@
-; ReaProfessor OSC address map (documentation + future REAPER OSC surface)
-; Compatible naming inspired by LiveProfessor 2 global OSC.
+; ReaProfessor OSC address map (LP2-inspired)
+; Consumed by control_service.lua via ExtState queue / oneshot.
 
 ; Cue list
 /CueLists/Go
@@ -10,12 +10,22 @@
 ; Snapshots
 /GlobalSnapshots/Recall
 /GlobalSnapshots/RecallName
+/GlobalSnapshots/Mode
 /GlobalSnapshots/Add
 /GlobalSnapshots/Update
 /GlobalSnapshots/Refresh
+
+; Channels
+/Command/Channels/Create
+/Command/Channels/Mode
+/Command/Channels/ApplyRecordSafe
 
 ; View
 /Command/View/LiveMode
 /Command/View/CueList
 /Command/View/ChainRack
 /Command/View/Snapshots
+
+; ExtState oneshot bridge (no UDP required):
+;   reaper.SetExtState("ReaProfessor", "osc_cmd", "/CueLists/Go", false)
+;   optional: reaper.SetExtState("ReaProfessor", "osc_arg", "1", false)

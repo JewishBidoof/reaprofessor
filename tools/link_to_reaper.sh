@@ -6,7 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 RESOURCE="${REAPER_RESOURCE:-$HOME/.config/REAPER}"
 
-mkdir -p "$RESOURCE/Scripts" "$RESOURCE/ColorThemes"
+mkdir -p "$RESOURCE/Scripts" "$RESOURCE/ColorThemes" "$RESOURCE/OSC"
 
 link_path() {
   local src="$1" dst="$2"
@@ -20,6 +20,8 @@ link_path() {
 link_path "$REPO_ROOT/scripts/ReaProfessor" "$RESOURCE/Scripts/ReaProfessor"
 link_path "$REPO_ROOT/theme/ReaProfessor.ReaperTheme" "$RESOURCE/ColorThemes/ReaProfessor.ReaperTheme"
 link_path "$REPO_ROOT/theme/ReaProfessor" "$RESOURCE/ColorThemes/ReaProfessor"
+link_path "$REPO_ROOT/resources/osc/ReaProfessor.ReaperOSC" "$RESOURCE/OSC/ReaProfessor.ReaperOSC"
 
 echo "REAPER resource: $RESOURCE"
 echo "Load Scripts/ReaProfessor/ReaProfessor.lua from the Actions list."
+echo "Optional: Preferences → Control/OSC/web → pattern config ReaProfessor."

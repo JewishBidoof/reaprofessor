@@ -53,4 +53,15 @@ tests/                  Automated REAPER script checks
 
 ## Status
 
-Early scaffold. Cue List, Snapshots, Chain Rack, and Live Mode scripts are functional prototypes for iteration in this environment.
+Active development. Working pieces:
+
+- 1:1 channel creator (same-strip / double-patch)
+- Snapshot modes: bypass · params · full FX reload
+- Cue list + OSC ExtState/MIDI control service
+- Live Mode + Chain Rack + stage color theme
+
+```bash
+./tools/link_to_reaper.sh
+./tools/smoke_test.sh
+```
+

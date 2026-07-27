@@ -2,34 +2,44 @@
 
 Target: make REAPER feel like a dedicated live plugin host instead of a studio DAW.
 
-## Priority 1 — Show control (MVP)
+## Priority 1 — Show control + live I/O (current)
 
 | Feature | LP2 behavior | ReaProfessor approach |
 | --- | --- | --- |
-| Cue List | Ordered cues: recall snapshot, send MIDI, map controller, OSC | `cue_list.lua` stores cues in project ExtState; GO / Back / Jump |
-| Global Snapshots | Store/recall whole show state | `snapshots.lua` + optional SWS snapshot actions |
-| Live Mode | Focus on racks + cues, not arrange | `live_mode.lua` toggles mixer/TCP visibility, transport, screenset |
-| Signal Chains | Serial plugin racks per source | One REAPER track = one chain; `chain_rack.lua` overview |
+| Cue List | Ordered cues: recall snapshot, send MIDI, map controller, OSC | `cue_list.lua` + `lib/commands.lua` |
+| Global Snapshots | Store/recall whole show state | `snapshots.lua` with **bypass / params / full FX reload** modes |
+| 1:1 channel setup | Quick rack of inputs | `create_channels.lua` — N mono in→HW out |
+| Record while processing | Multitrack dry + live FX | **Same strip** (record input / monitor FX) or **double patch** (REC + FX tracks) |
+| OSC / MIDI | Hardware + show control | `control_service.lua` + ExtState OSC queue + MIDI map |
+| Live Mode | Focus on racks + cues | `live_mode.lua` |
+| Signal Chains | Serial plugin racks | Tracks as chains; `chain_rack.lua` |
 
-## Priority 2 — Routing & control
+## Record-safe processing
 
-| Feature | LP2 behavior | ReaProfessor approach |
+Processing must never alter what hits the multitrack:
+
+1. **Same strip** — `I_RECMODE=input` (dry file) + `I_RECMON=on` (hear FX) + mono HW out. Snapshots edit FX on that strip.
+2. **Double patch** — `CH## REC` armed, no monitor/HW out; `CH## FX` same input, monitor + FX + HW out. Snapshots **skip** `role=record` tracks.
+
+## Snapshot modes
+
+| Mode | Capture | Recall |
 | --- | --- | --- |
-| Wire View | Free patching between plugins | Native track routing matrix + pin connector; future gfx patch bay |
-| Hardware Controllers | MIDI/OSC maps with scaling | REAPER MIDI learn + OSC config in `resources/osc/` |
-| OSC API | `/GlobalSnapshots/Recall`, `/CueLists/Go`, … | Scripted OSC listener mirroring LP2 path names where practical |
-| LTC / timecode | Cue triggers from LTC | REAPER timecode + marker/region actions (later) |
+| `bypass` | FX enable states (+ mute/solo) | Enable/bypass only |
+| `params` | Bypass + parameter values | Apply params (FX must already exist) |
+| `full` | Full chain identity + params | Delete FX, re-add by name, apply params |
 
-## Priority 3 — Presentation
+## OSC addresses (control service)
 
-| Feature | LP2 behavior | ReaProfessor approach |
-| --- | --- | --- |
-| Dark live UI | Stage-readable, low glare | `theme/ReaProfessor.ReaperTheme` color overlay |
-| View Sets | Named window layouts | REAPER screensets saved under `resources/screensets/` |
-| Plugin / snapshot panels | Dedicated browser windows | gfx panels first; ReaImGui optional later |
+See `resources/osc/reaprofessor_addresses.txt` and `ReaProfessor.ReaperOSC`.
 
-## Non-goals (for now)
+Oneshoot bridge: set ExtState `ReaProfessor` / `osc_cmd` = `/CueLists/Go` (optional `osc_arg`).
 
-- Replacing REAPER's audio engine or plugin scanner
-- Full AU parity on Linux (use VST3/LV2)
-- Bit-identical LP2 project import (document manual migration instead)
+## Priority 2 — later
+
+| Feature | Approach |
+| --- | --- |
+| Wire / matrix view | gfx patch bay on top of native routing |
+| Native UDP OSC | Small bridge → ExtState queue, or CSI |
+| LTC / timecode cues | Markers + timecode actions |
+| View Sets | Screensets under `resources/screensets/` |

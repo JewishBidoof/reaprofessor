@@ -13,77 +13,37 @@ package.path = script_dir .. "lib/?.lua;" .. res .. "lib/?.lua;" .. package.path
 local UI = require("ui")
 local Data = require("data")
 local OSC = require("osc")
+local Commands = require("commands")
 
 local cues = Data.load_cues()
 local meta = Data.load_meta()
-local snaps = Data.load_snapshots()
 local selected = meta.cue_index or 1
 if selected < 1 then selected = 1 end
 if selected > #cues then selected = math.max(1, #cues) end
 
-local function find_snapshot(name)
-  for _, s in ipairs(snaps) do
-    if s.name == name then return s end
-  end
-  return nil
-end
-
-local function run_cue(cue)
-  if not cue then return end
-  if cue.kind == "snapshot" then
-    local name = cue.payload and cue.payload.snapshot
-    local snap = find_snapshot(name)
-    if snap then
-      Data.recall_snapshot(snap)
-      reaper.ShowConsoleMsg("[ReaProfessor] Recalled snapshot: " .. tostring(name) .. "\n")
-    else
-      reaper.ShowConsoleMsg("[ReaProfessor] Snapshot not found: " .. tostring(name) .. " (cue still advances)\n")
-    end
-  elseif cue.kind == "action" then
-    local cmd = cue.payload and cue.payload.command_id
-    if cmd then
-      local id = reaper.NamedCommandLookup(tostring(cmd))
-      if id == 0 then id = tonumber(cmd) or 0 end
-      if id ~= 0 then reaper.Main_OnCommand(id, 0) end
-    end
-  elseif cue.kind == "midi" then
-    reaper.ShowConsoleMsg("[ReaProfessor] MIDI cue stub: " .. tostring(cue.name) .. "\n")
-  elseif cue.kind == "osc" then
-    reaper.ShowConsoleMsg("[ReaProfessor] OSC out stub: " .. tostring(cue.payload and cue.payload.path) .. "\n")
-  else
-    reaper.ShowConsoleMsg("[ReaProfessor] Unknown cue kind: " .. tostring(cue.kind) .. "\n")
-  end
+local function refresh()
+  cues = Data.load_cues()
+  meta = Data.load_meta()
+  selected = meta.cue_index or selected
+  if selected > #cues then selected = math.max(1, #cues) end
 end
 
 local function go_next()
-  if #cues == 0 then return end
-  run_cue(cues[selected])
-  selected = math.min(#cues, selected + 1)
-  meta.cue_index = selected
-  Data.save_meta(meta)
+  Commands.cue_go()
+  refresh()
 end
 
 local function go_back()
-  if #cues == 0 then return end
-  selected = math.max(1, selected - 1)
-  run_cue(cues[selected])
-  meta.cue_index = selected
-  Data.save_meta(meta)
+  Commands.cue_back()
+  refresh()
 end
 
 local function go_to(idx)
-  if idx < 1 or idx > #cues then return end
-  selected = idx
-  run_cue(cues[selected])
-  meta.cue_index = selected
-  Data.save_meta(meta)
+  Commands.cue_goto(idx)
+  refresh()
 end
 
-local handlers = {
-  [OSC.addresses.cue_go] = function() go_next() end,
-  [OSC.addresses.cue_back] = function() go_back() end,
-  [OSC.addresses.cue_goto] = function(args) go_to(tonumber(args[1]) or 1) end,
-}
+local handlers = Commands.handlers()
 
 local function add_cue()
   local name = "Cue " .. tostring(#cues + 1)

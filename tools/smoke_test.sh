@@ -49,10 +49,13 @@ if ! grep -q '^OK$' "$RESULT"; then
 fi
 
 # Required keys
-for key in version sws reapack modules cue_go; do
+for key in version sws reapack modules cue_go channels_same channels_double snap_bypass snap_params snap_full midi_match; do
   grep -q "^${key}=" "$RESULT" || { echo "Missing key: $key" >&2; exit 1; }
 done
 
 grep -q '^cue_go=true$' "$RESULT" || { echo "cue_go did not succeed" >&2; exit 1; }
+grep -q '^channels_same=true$' "$RESULT" || { echo "channel create failed" >&2; exit 1; }
+grep -q '^snap_full=true$' "$RESULT" || { echo "full snapshot reload failed" >&2; exit 1; }
+grep -q '^midi_match=true$' "$RESULT" || { echo "midi map match failed" >&2; exit 1; }
 
 echo "Smoke test passed."
