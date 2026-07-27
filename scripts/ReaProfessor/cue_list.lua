@@ -13,6 +13,7 @@ package.path = script_dir .. "lib/?.lua;" .. res .. "lib/?.lua;" .. package.path
 local UI = require("ui")
 local Data = require("data")
 local Commands = require("commands")
+local Config = require("config")
 
 local cues = Data.load_cues()
 local meta = Data.load_meta()
@@ -28,16 +29,19 @@ local function refresh()
 end
 
 local function go_next()
+  if not Config.actions_enabled() then return Config.deny_action("Cue GO") end
   Commands.cue_go()
   refresh()
 end
 
 local function go_back()
+  if not Config.actions_enabled() then return Config.deny_action("Cue Back") end
   Commands.cue_back()
   refresh()
 end
 
 local function go_to(idx)
+  if not Config.actions_enabled() then return Config.deny_action("Cue Fire") end
   Commands.cue_goto(idx)
   refresh()
 end

@@ -157,6 +157,10 @@ function Commands.apply_record_safe(mode)
 end
 
 function Commands.run_named(command, arg)
+  local Config = require("config")
+  if not Config.actions_enabled() then
+    return Config.deny_action(command or "Command")
+  end
   if command == "cue_go" then return Commands.cue_go()
   elseif command == "cue_back" then return Commands.cue_back()
   elseif command == "cue_goto" then return Commands.cue_goto(arg)

@@ -1,9 +1,10 @@
 -- @description ReaProfessor
--- @version 0.3.1
+-- @version 0.3.2
 -- @author JewishBidoof
 -- @metapackage
 -- @provides
 --   [main] ../scripts/ReaProfessor/ReaProfessor.lua > ReaProfessor/ReaProfessor.lua
+--   [main] ../scripts/ReaProfessor/install_extensions_menu.lua > ReaProfessor/install_extensions_menu.lua
 --   [main] ../scripts/ReaProfessor/cue_list.lua > ReaProfessor/cue_list.lua
 --   [main] ../scripts/ReaProfessor/snapshots.lua > ReaProfessor/snapshots.lua
 --   [main] ../scripts/ReaProfessor/chain_rack.lua > ReaProfessor/chain_rack.lua
@@ -13,7 +14,9 @@
 --   [main] ../scripts/ReaProfessor/control_service.lua > ReaProfessor/control_service.lua
 --   [main] ../scripts/ReaProfessor/mapping.lua > ReaProfessor/mapping.lua
 --   [nomain] ../scripts/ReaProfessor/lib/commands.lua > ReaProfessor/lib/commands.lua
+--   [nomain] ../scripts/ReaProfessor/lib/config.lua > ReaProfessor/lib/config.lua
 --   [nomain] ../scripts/ReaProfessor/lib/data.lua > ReaProfessor/lib/data.lua
+--   [nomain] ../scripts/ReaProfessor/lib/menu.lua > ReaProfessor/lib/menu.lua
 --   [nomain] ../scripts/ReaProfessor/lib/midi.lua > ReaProfessor/lib/midi.lua
 --   [nomain] ../scripts/ReaProfessor/lib/osc.lua > ReaProfessor/lib/osc.lua
 --   [nomain] ../scripts/ReaProfessor/lib/path.lua > ReaProfessor/lib/path.lua
@@ -21,10 +24,10 @@
 --   [nomain] ../scripts/ReaProfessor/lib/ui.lua > ReaProfessor/lib/ui.lua
 --   [data] ../resources/osc/ReaProfessor.ReaperOSC > ReaProfessor.ReaperOSC
 -- @changelog
---   + Fix ReaPack install paths (ReaProfessor/ subtree)
---   + Custom MIDI/OSC mapping editor (no default bindings)
---   + ReaPack metapackage
+--   + Extensions → ReaProfessor menu installer
+--   + Fix gfx crash when opening panels from hub
+--   + Gate project actions until finalized (UI browse only)
 -- @about
---   Live-oriented REAPER toolkit inspired by LiveProfessor 2: cue lists,
---   FX snapshots, 1:1 channel routing, record-safe processing, and fully
---   custom MIDI/OSC maps. Run Actions → ReaProfessor after install.
+--   Live-oriented REAPER toolkit inspired by LiveProfessor 2.
+--   Run Actions → ReaProfessor, then "Install Extensions menu".
+--   Restart REAPER once to see Extensions → ReaProfessor.

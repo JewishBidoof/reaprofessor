@@ -10,6 +10,7 @@ local script_dir = (src:sub(1, 1) == "@" and src:sub(2):match("(.+[\\/])")) or r
 package.path = script_dir .. "lib/?.lua;" .. res .. "lib/?.lua;" .. package.path
 
 local UI = require("ui")
+local Config = require("config")
 
 local selected = 0
 local running = true
@@ -54,9 +55,13 @@ local function draw()
   UI.label(180, 22, "Each track is a signal chain  ·  click to select  ·  double-click opens FX", UI.colors.muted)
 
   if UI.button("addtr", w - 150, 12, 138, 36, "+ Chain") then
-    reaper.InsertTrackAtIndex(reaper.CountTracks(0), true)
-    local tr = reaper.GetTrack(0, reaper.CountTracks(0) - 1)
-    reaper.GetSetMediaTrackInfo_String(tr, "P_NAME", "Chain " .. reaper.CountTracks(0), true)
+    if not Config.actions_enabled() then
+      Config.deny_action("Add Chain")
+    else
+      reaper.InsertTrackAtIndex(reaper.CountTracks(0), true)
+      local tr = reaper.GetTrack(0, reaper.CountTracks(0) - 1)
+      reaper.GetSetMediaTrackInfo_String(tr, "P_NAME", "Chain " .. reaper.CountTracks(0), true)
+    end
   end
 
   local chains = track_chains()
