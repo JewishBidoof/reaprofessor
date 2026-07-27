@@ -67,8 +67,10 @@ tests/                  Automated REAPER script checks
 
 ## Status
 
-Active development (v0.3.6):
+Active development (v0.3.7):
 
+- Full snapshot recall restores complete multi-FX / JSFX chains (FXCHAIN nesting fix)
+- Params snapshots use normalized values and match FX by identity
 - Actions-list entry only — does **not** customize Extensions (keeps ReaPack/SWS top-level)
 - Hub button **Restore Extensions menu** undoes any prior nesting from older builds
 - Cue list: `+ CUE` captures current FX as a snapshot and links it

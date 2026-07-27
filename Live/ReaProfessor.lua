@@ -1,5 +1,5 @@
 -- @description ReaProfessor
--- @version 0.3.6
+-- @version 0.3.7
 -- @author JewishBidoof
 -- @metapackage
 -- @provides
@@ -25,6 +25,8 @@
 --   [nomain] ../scripts/ReaProfessor/lib/ui.lua > ReaProfessor/lib/ui.lua
 --   [data] ../resources/osc/ReaProfessor.ReaperOSC > ReaProfessor.ReaperOSC
 -- @changelog
+--   + Fix full snapshot recall truncating multi-FX chains (FXCHAIN nesting)
+--   + Store/restore normalized params; match FX by identity
 --   + Stop customizing Extensions menu (was nesting ReaPack/SWS); restore stock menu
 --   + Fix cues: + CUE captures FX snapshot and links it
 --   + Actions-list registration only
