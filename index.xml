@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="ReaProfessor" commit="78c0234f4439dfbde1239e8bed327b47bc3dc161">
+<index version="1" name="ReaProfessor" commit="1409f95404d449cab3be54d2ecb769e7601d473d">
   <category name="Live">
     <reapack name="ReaProfessor.lua" type="script" desc="ReaProfessor">
       <metadata>
@@ -7,7 +7,7 @@
 {\colortbl;\red255\green0\blue0;\red0\green0\blue255;}
 \widowctrl\hyphauto
 
-{\pard \ql \f0 \sa180 \li0 \fi0 Live-oriented REAPER toolkit inspired by LiveProfessor 2: cue lists, FX snapshots, 1:1 channel routing, record-safe processing, and fully custom MIDI/OSC maps. Run Actions \u8594 ? ReaProfessor after install.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Live-oriented REAPER toolkit inspired by LiveProfessor 2. Run Actions \u8594 ? ReaProfessor, then "Install Extensions menu". Restart REAPER once to see Extensions \u8594 ? ReaProfessor.\par}
 }
 ]]></description>
       </metadata>
@@ -54,6 +54,31 @@
         <source file="ReaProfessor/lib/ui.lua">https://github.com/JewishBidoof/reaprofessor/raw/78c0234f4439dfbde1239e8bed327b47bc3dc161/scripts/ReaProfessor/lib/ui.lua</source>
         <source type="data" file="ReaProfessor.ReaperOSC">https://github.com/JewishBidoof/reaprofessor/raw/78c0234f4439dfbde1239e8bed327b47bc3dc161/resources/osc/ReaProfessor.ReaperOSC</source>
       </version>
+      <version name="0.3.2" author="JewishBidoof" time="2026-07-27T17:37:31Z">
+        <changelog><![CDATA[+ Extensions → ReaProfessor menu installer
++ Fix gfx crash when opening panels from hub
++ Gate project actions until finalized (UI browse only)]]></changelog>
+        <source main="main" file="ReaProfessor/ReaProfessor.lua">https://github.com/JewishBidoof/reaprofessor/raw/1409f95404d449cab3be54d2ecb769e7601d473d/scripts/ReaProfessor/ReaProfessor.lua</source>
+        <source main="main" file="ReaProfessor/install_extensions_menu.lua">https://github.com/JewishBidoof/reaprofessor/raw/1409f95404d449cab3be54d2ecb769e7601d473d/scripts/ReaProfessor/install_extensions_menu.lua</source>
+        <source main="main" file="ReaProfessor/cue_list.lua">https://github.com/JewishBidoof/reaprofessor/raw/1409f95404d449cab3be54d2ecb769e7601d473d/scripts/ReaProfessor/cue_list.lua</source>
+        <source main="main" file="ReaProfessor/snapshots.lua">https://github.com/JewishBidoof/reaprofessor/raw/1409f95404d449cab3be54d2ecb769e7601d473d/scripts/ReaProfessor/snapshots.lua</source>
+        <source main="main" file="ReaProfessor/chain_rack.lua">https://github.com/JewishBidoof/reaprofessor/raw/1409f95404d449cab3be54d2ecb769e7601d473d/scripts/ReaProfessor/chain_rack.lua</source>
+        <source main="main" file="ReaProfessor/create_channels.lua">https://github.com/JewishBidoof/reaprofessor/raw/1409f95404d449cab3be54d2ecb769e7601d473d/scripts/ReaProfessor/create_channels.lua</source>
+        <source main="main" file="ReaProfessor/live_mode.lua">https://github.com/JewishBidoof/reaprofessor/raw/1409f95404d449cab3be54d2ecb769e7601d473d/scripts/ReaProfessor/live_mode.lua</source>
+        <source main="main" file="ReaProfessor/control_panel.lua">https://github.com/JewishBidoof/reaprofessor/raw/1409f95404d449cab3be54d2ecb769e7601d473d/scripts/ReaProfessor/control_panel.lua</source>
+        <source main="main" file="ReaProfessor/control_service.lua">https://github.com/JewishBidoof/reaprofessor/raw/1409f95404d449cab3be54d2ecb769e7601d473d/scripts/ReaProfessor/control_service.lua</source>
+        <source main="main" file="ReaProfessor/mapping.lua">https://github.com/JewishBidoof/reaprofessor/raw/1409f95404d449cab3be54d2ecb769e7601d473d/scripts/ReaProfessor/mapping.lua</source>
+        <source file="ReaProfessor/lib/commands.lua">https://github.com/JewishBidoof/reaprofessor/raw/1409f95404d449cab3be54d2ecb769e7601d473d/scripts/ReaProfessor/lib/commands.lua</source>
+        <source file="ReaProfessor/lib/config.lua">https://github.com/JewishBidoof/reaprofessor/raw/1409f95404d449cab3be54d2ecb769e7601d473d/scripts/ReaProfessor/lib/config.lua</source>
+        <source file="ReaProfessor/lib/data.lua">https://github.com/JewishBidoof/reaprofessor/raw/1409f95404d449cab3be54d2ecb769e7601d473d/scripts/ReaProfessor/lib/data.lua</source>
+        <source file="ReaProfessor/lib/menu.lua">https://github.com/JewishBidoof/reaprofessor/raw/1409f95404d449cab3be54d2ecb769e7601d473d/scripts/ReaProfessor/lib/menu.lua</source>
+        <source file="ReaProfessor/lib/midi.lua">https://github.com/JewishBidoof/reaprofessor/raw/1409f95404d449cab3be54d2ecb769e7601d473d/scripts/ReaProfessor/lib/midi.lua</source>
+        <source file="ReaProfessor/lib/osc.lua">https://github.com/JewishBidoof/reaprofessor/raw/1409f95404d449cab3be54d2ecb769e7601d473d/scripts/ReaProfessor/lib/osc.lua</source>
+        <source file="ReaProfessor/lib/path.lua">https://github.com/JewishBidoof/reaprofessor/raw/1409f95404d449cab3be54d2ecb769e7601d473d/scripts/ReaProfessor/lib/path.lua</source>
+        <source file="ReaProfessor/lib/routing.lua">https://github.com/JewishBidoof/reaprofessor/raw/1409f95404d449cab3be54d2ecb769e7601d473d/scripts/ReaProfessor/lib/routing.lua</source>
+        <source file="ReaProfessor/lib/ui.lua">https://github.com/JewishBidoof/reaprofessor/raw/1409f95404d449cab3be54d2ecb769e7601d473d/scripts/ReaProfessor/lib/ui.lua</source>
+        <source type="data" file="ReaProfessor.ReaperOSC">https://github.com/JewishBidoof/reaprofessor/raw/1409f95404d449cab3be54d2ecb769e7601d473d/resources/osc/ReaProfessor.ReaperOSC</source>
+      </version>
     </reapack>
   </category>
   <metadata>
@@ -77,7 +102,12 @@ ReaPack
  (recommended)\sa180\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 Install (ReaPack)\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 \f1 https://github.com/JewishBidoof/reaprofessor/raw/main/index.xml\par}
-{\pard \ql \f0 \sa180 \li0 \fi0 Extensions \u8594 ? ReaPack \u8594 ? Import a repository\u8230 ? \u8594 ? Synchronize packages \u8594 ? run {\b ReaProfessor}.\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 1.\tx360\tab {\b Extensions \u8594 ? ReaPack \u8594 ? Import a repository\u8230 ?} \u8594 ? paste URL \u8594 ? OK\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 2.\tx360\tab {\b Extensions \u8594 ? ReaPack \u8594 ? Browse packages\u8230 ?} \u8594 ? filter {\b ReaProfessor} (category {\b Live}) \u8594 ? Install\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 3.\tx360\tab {\b Actions \u8594 ? Show action list} \u8594 ? search {\f1 ReaProfessor} \u8594 ? run {\b ReaProfessor}\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 4.\tx360\tab In the hub, click {\b Install Extensions \u8594 ? ReaProfessor menu}, then {\b restart REAPER} once\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 5.\tx360\tab Afterwards: {\b Extensions \u8594 ? ReaProfessor}\sa180\par}
+{\pard \ql \f0 \sa180 \li720 \fi0 Scripts do not appear under Extensions until step 4\u8211-5. They always appear in the Actions list after install.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 See {\field{\*\fldinst{HYPERLINK "docs/REAPACK.md"}}{\fldrslt{\ul
 docs/REAPACK.md
 }}}
@@ -103,14 +133,12 @@ docs/                   Feature map + architecture\line
 tests/                  Automated REAPER script checks\line
 .cursor/                Cloud agent environment config\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 Status\par}
-{\pard \ql \f0 \sa180 \li0 \fi0 Active development (v0.3.0):\par}
-{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab 1:1 channel creator (same-strip / double-patch)\par}
-{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Snapshot modes: bypass \u183 ? params \u183 ? full FX reload\par}
-{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Cue list + {\b custom} MIDI/OSC mapping (no defaults)\par}
-{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Control service + Live Mode + Chain Rack\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Active development (v0.3.2):\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Extensions \u8594 ? ReaProfessor menu installer (restart once after install)\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Prototype mode: UI browseable, project actions gated until finalized\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab 1:1 channel creator, snapshots, cues, custom MIDI/OSC mapping\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab ReaPack metapackage under {\f1 Live/ReaProfessor.lua}\sa180\par}
-{\pard \ql \f0 \sa180 \li0 \fi0 \f1 ./tools/link_to_reaper.sh\line
-./tools/smoke_test.sh\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \f1 ./tools/link_to_reaper.sh\par}
 }
 ]]></description>
   </metadata>
