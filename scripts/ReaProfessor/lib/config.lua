@@ -1,13 +1,12 @@
 -- @description ReaProfessor config flags
--- @version 0.3.3
+-- @version 0.3.4
 -- @author JewishBidoof
 -- @noindex
 
 local Config = {}
 
--- Flip to true when channel/cue/snapshot actions are ready for real use.
--- Until then: browse UI / Mapping only — no project or show mutations.
-Config.FINALIZED = false
+-- Show/project actions are enabled. Set false only for emergency lockout.
+Config.FINALIZED = true
 
 function Config.actions_enabled()
   return Config.FINALIZED == true

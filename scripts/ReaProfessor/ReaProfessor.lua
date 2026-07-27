@@ -1,5 +1,5 @@
 -- @description ReaProfessor
--- @version 0.3.3
+-- @version 0.3.4
 -- @author JewishBidoof
 -- @about Live plugin host toolkit for REAPER (cue lists, snapshots, 1:1 channels, custom MIDI/OSC).
 -- @noindex
@@ -16,9 +16,9 @@ local Menu = require("menu")
 
 local running = true
 local pending_open = nil
-local status = Config.actions_enabled() and "" or "Prototype mode — project actions are disabled"
+local status = ""
 
-UI.init("ReaProfessor", 560, 600, 0)
+UI.init("ReaProfessor", 560, 620, 0)
 
 -- Safe handoff: quit this gfx script fully, then open the next on a later defer tick.
 -- (gfx.quit + dofile in the same cycle is a common REAPER crash.)
@@ -49,9 +49,7 @@ local function install_menu()
   if not reaper.file_exists(hub) then hub = alt .. "ReaProfessor.lua" end
   local ok, msg = Menu.install(hub)
   status = tostring(msg)
-  if ok and msg and msg:find("restart") then
-    reaper.ShowMessageBox(msg, "ReaProfessor", 0)
-  end
+  reaper.ShowMessageBox(tostring(msg), "ReaProfessor", 0)
 end
 
 local function draw()
@@ -63,11 +61,7 @@ local function draw()
   gfx.setfont(1)
   UI.label(24, 52, "Live plugin hosting for REAPER", UI.colors.text)
   gfx.setfont(3)
-  if not Config.actions_enabled() then
-    UI.label(24, 78, "Prototype — UI only; actions will not change the project", UI.colors.danger)
-  else
-    UI.label(24, 78, "Multitrack · snapshots · cues · custom MIDI/OSC", UI.colors.muted)
-  end
+  UI.label(24, 78, "Multitrack · snapshots · cues · custom MIDI/OSC", UI.colors.muted)
 
   local y = 110
   local bw, bh = w - 48, 38
@@ -79,9 +73,7 @@ local function draw()
   end
 
   if UI.button("live", 24, y, bw, bh, "Toggle Live Mode", { bg = UI.colors.panel }) then
-    Config.guard("Live Mode", function()
-      open_script("live_mode.lua")
-    end)
+    open_script("live_mode.lua")
   end
   y = y + 50
 
@@ -102,7 +94,6 @@ local function loop()
     if pending_open then
       local path = pending_open
       pending_open = nil
-      -- Next defer tick after gfx teardown
       reaper.defer(function()
         dofile(path)
       end)
@@ -114,11 +105,16 @@ local function loop()
   reaper.defer(loop)
 end
 
--- Best-effort: register action on open (menu item still needs install + restart once)
+-- Register action + write Extensions menu entry every time the hub opens.
 do
   local hub = script_dir .. "ReaProfessor.lua"
   if not reaper.file_exists(hub) then hub = alt .. "ReaProfessor.lua" end
-  Menu.register_hub(hub)
+  local ok, msg = Menu.ensure(hub)
+  if ok then
+    status = "Menu entry ready — quit & reopen REAPER once if Extensions → ReaProfessor is missing"
+  else
+    status = tostring(msg)
+  end
 end
 
 loop()
