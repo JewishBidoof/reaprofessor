@@ -1,12 +1,13 @@
 name: ReaPack index
 
+# Disabled until ReaProfessor is ready for public ReaPack publish.
+# Re-enable by restoring `push: branches: [main]` and removing `if: false`.
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 jobs:
   index:
+    if: false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
