@@ -3,9 +3,10 @@
 -- @author ReaProfessor
 -- @about Entry point for ReaProfessor (LiveProfessor-style REAPER workflow).
 
-local script_path = ({reaper.get_action_context()})[2]
-local script_dir = script_path:match("(.+[\\/])") or ""
-package.path = script_dir .. "lib/?.lua;" .. package.path
+local res = reaper.GetResourcePath() .. "/Scripts/ReaProfessor/"
+local src = debug.getinfo(1, "S").source
+local script_dir = (src:sub(1, 1) == "@" and src:sub(2):match("(.+[\\/])")) or res
+package.path = script_dir .. "lib/?.lua;" .. res .. "lib/?.lua;" .. package.path
 
 local UI = require("ui")
 
