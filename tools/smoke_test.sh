@@ -20,8 +20,18 @@ fi
 # Ensure REAPER can require() repo libs even before Actions registration.
 export REAPROFESSOR_ROOT="$REPO_ROOT"
 
-timeout "${SMOKE_TIMEOUT:-60}" reaper -nosplash -new -ignoreerrors \
+# A leftover GUI instance will steal argv and open .lua as media — always start clean.
+killall -9 reaper 2>/dev/null || true
+sleep 0.5
+
+timeout "${SMOKE_TIMEOUT:-60}" reaper -newinst -nosplash -new -ignoreerrors \
   "$REPO_ROOT/tests/smoke.lua" >"$LOG" 2>&1 || true
+
+# Wait briefly if REAPER is still flushing the result file
+for _ in $(seq 1 20); do
+  [[ -f "$RESULT" ]] && break
+  sleep 0.25
+done
 
 if [[ ! -f "$RESULT" ]]; then
   echo "Smoke test failed: no result file" >&2
