@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<index version="1" name="ReaProfessor" commit="f1d61bdeb805c8b9f27a8351827f46ae67741ae9">
+  <category name="Live">
+    <reapack name="ReaProfessor.lua" type="script" desc="ReaProfessor">
+      <metadata>
+        <description><![CDATA[{\rtf1\ansi\deff0{\fonttbl{\f0 \fswiss Helvetica;}{\f1 \fmodern Courier;}}
+{\colortbl;\red255\green0\blue0;\red0\green0\blue255;}
+\widowctrl\hyphauto
+
+{\pard \ql \f0 \sa180 \li0 \fi0 Live-oriented REAPER toolkit inspired by LiveProfessor 2: cue lists, FX snapshots, 1:1 channel routing, record-safe processing, and fully custom MIDI/OSC maps. Run Actions \u8594 ? ReaProfessor after install.\par}
+}
+]]></description>
+      </metadata>
+      <version name="0.3.0" author="JewishBidoof" time="2026-07-27T17:13:36Z">
+        <changelog><![CDATA[+ Custom MIDI/OSC mapping editor (no default bindings)
++ ReaPack metapackage]]></changelog>
+        <source main="main" file="../scripts/ReaProfessor/ReaProfessor.lua">https://github.com/JewishBidoof/reaprofessor/raw/f1d61bdeb805c8b9f27a8351827f46ae67741ae9/scripts/ReaProfessor/ReaProfessor.lua</source>
+        <source main="main" file="../scripts/ReaProfessor/cue_list.lua">https://github.com/JewishBidoof/reaprofessor/raw/f1d61bdeb805c8b9f27a8351827f46ae67741ae9/scripts/ReaProfessor/cue_list.lua</source>
+        <source main="main" file="../scripts/ReaProfessor/snapshots.lua">https://github.com/JewishBidoof/reaprofessor/raw/f1d61bdeb805c8b9f27a8351827f46ae67741ae9/scripts/ReaProfessor/snapshots.lua</source>
+        <source main="main" file="../scripts/ReaProfessor/chain_rack.lua">https://github.com/JewishBidoof/reaprofessor/raw/f1d61bdeb805c8b9f27a8351827f46ae67741ae9/scripts/ReaProfessor/chain_rack.lua</source>
+        <source main="main" file="../scripts/ReaProfessor/create_channels.lua">https://github.com/JewishBidoof/reaprofessor/raw/f1d61bdeb805c8b9f27a8351827f46ae67741ae9/scripts/ReaProfessor/create_channels.lua</source>
+        <source main="main" file="../scripts/ReaProfessor/live_mode.lua">https://github.com/JewishBidoof/reaprofessor/raw/f1d61bdeb805c8b9f27a8351827f46ae67741ae9/scripts/ReaProfessor/live_mode.lua</source>
+        <source main="main" file="../scripts/ReaProfessor/control_panel.lua">https://github.com/JewishBidoof/reaprofessor/raw/f1d61bdeb805c8b9f27a8351827f46ae67741ae9/scripts/ReaProfessor/control_panel.lua</source>
+        <source main="main" file="../scripts/ReaProfessor/control_service.lua">https://github.com/JewishBidoof/reaprofessor/raw/f1d61bdeb805c8b9f27a8351827f46ae67741ae9/scripts/ReaProfessor/control_service.lua</source>
+        <source main="main" file="../scripts/ReaProfessor/mapping.lua">https://github.com/JewishBidoof/reaprofessor/raw/f1d61bdeb805c8b9f27a8351827f46ae67741ae9/scripts/ReaProfessor/mapping.lua</source>
+        <source file="../scripts/ReaProfessor/lib/commands.lua">https://github.com/JewishBidoof/reaprofessor/raw/f1d61bdeb805c8b9f27a8351827f46ae67741ae9/scripts/ReaProfessor/lib/commands.lua</source>
+        <source file="../scripts/ReaProfessor/lib/data.lua">https://github.com/JewishBidoof/reaprofessor/raw/f1d61bdeb805c8b9f27a8351827f46ae67741ae9/scripts/ReaProfessor/lib/data.lua</source>
+        <source file="../scripts/ReaProfessor/lib/midi.lua">https://github.com/JewishBidoof/reaprofessor/raw/f1d61bdeb805c8b9f27a8351827f46ae67741ae9/scripts/ReaProfessor/lib/midi.lua</source>
+        <source file="../scripts/ReaProfessor/lib/osc.lua">https://github.com/JewishBidoof/reaprofessor/raw/f1d61bdeb805c8b9f27a8351827f46ae67741ae9/scripts/ReaProfessor/lib/osc.lua</source>
+        <source file="../scripts/ReaProfessor/lib/path.lua">https://github.com/JewishBidoof/reaprofessor/raw/f1d61bdeb805c8b9f27a8351827f46ae67741ae9/scripts/ReaProfessor/lib/path.lua</source>
+        <source file="../scripts/ReaProfessor/lib/routing.lua">https://github.com/JewishBidoof/reaprofessor/raw/f1d61bdeb805c8b9f27a8351827f46ae67741ae9/scripts/ReaProfessor/lib/routing.lua</source>
+        <source file="../scripts/ReaProfessor/lib/ui.lua">https://github.com/JewishBidoof/reaprofessor/raw/f1d61bdeb805c8b9f27a8351827f46ae67741ae9/scripts/ReaProfessor/lib/ui.lua</source>
+        <source type="data" file="../resources/osc/ReaProfessor.ReaperOSC">https://github.com/JewishBidoof/reaprofessor/raw/f1d61bdeb805c8b9f27a8351827f46ae67741ae9/resources/osc/ReaProfessor.ReaperOSC</source>
+      </version>
+    </reapack>
+  </category>
+  <metadata>
+    <description><![CDATA[{\rtf1\ansi\deff0{\fonttbl{\f0 \fswiss Helvetica;}{\f1 \fmodern Courier;}}
+{\colortbl;\red255\green0\blue0;\red0\green0\blue255;}
+\widowctrl\hyphauto
+
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel0 \b \fs36 ReaProfessor\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Live-oriented REAPER theme and script pack that aims to replace {\b LiveProfessor 2} for live sound, theatre, and broadcast plugin hosting.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 REAPER already hosts VST/VST3 (and LV2 on Linux), has deep routing, and is scriptable. ReaProfessor layers a LiveProfessor-style workflow on top:\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 | LiveProfessor 2 | ReaProfessor (REAPER) | | --- | --- | | Signal Chains | Tracks as chains + FX chain UI | | Wire / matrix routing | Track I/O + sends + routing matrix | | Global / plugin snapshots | ExtState snapshots + SWS snapshots | | Cue Lists | ReaProfessor Cue List panel | | MIDI / OSC / LTC | REAPER MIDI + OSC + script bridges | | View Sets | Screensets + Live Mode action | | Hardware controllers | MIDI learn / CSI / OSC maps |\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 Requirements\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab REAPER 7.x (Linux/macOS/Windows)\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\field{\*\fldinst{HYPERLINK "https://www.sws-extension.org/"}}{\fldrslt{\ul
+SWS/S&M Extension
+}}}
+ (recommended)\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab {\field{\*\fldinst{HYPERLINK "https://reapack.com/"}}{\fldrslt{\ul
+ReaPack
+}}}
+ (recommended)\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 Install (ReaPack)\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \f1 https://github.com/JewishBidoof/reaprofessor/raw/main/index.xml\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Extensions \u8594 ? ReaPack \u8594 ? Import a repository\u8230 ? \u8594 ? Synchronize packages \u8594 ? run {\b ReaProfessor}.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 See {\field{\*\fldinst{HYPERLINK "docs/REAPACK.md"}}{\fldrslt{\ul
+docs/REAPACK.md
+}}}
+ for publishing details.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \f1 # Install REAPER + SWS + ReaPack + JACK (Linux cloud/dev)\line
+./tools/install_dev_env.sh\line
+\line
+# Symlink this repo into your REAPER resource path\line
+./tools/link_to_reaper.sh\line
+\line
+# Start dummy JACK (headless / no audio interface)\line
+./tools/start_jack.sh\line
+\line
+# Smoke-test scripting + extensions\line
+./tools/smoke_test.sh\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 In REAPER: {\b Actions \u8594 ? Show action list \u8594 ? ReaScript: Load} \u8594 ?\line {\f1 Scripts/ReaProfessor/ReaProfessor.lua}\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 Repo layout\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \f1 scripts/ReaProfessor/   Lua UI + show-control scripts\line
+theme/                  Live-oriented color theme overlay\line
+resources/              Demo project, OSC map stubs\line
+tools/                  Install, link, jack, smoke tests\line
+docs/                   Feature map + architecture\line
+tests/                  Automated REAPER script checks\line
+.cursor/                Cloud agent environment config\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 Status\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Active development (v0.3.0):\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab 1:1 channel creator (same-strip / double-patch)\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Snapshot modes: bypass \u183 ? params \u183 ? full FX reload\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Cue list + {\b custom} MIDI/OSC mapping (no defaults)\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Control service + Live Mode + Chain Rack\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab ReaPack metapackage under {\f1 Live/ReaProfessor.lua}\sa180\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 \f1 ./tools/link_to_reaper.sh\line
+./tools/smoke_test.sh\par}
+}
+]]></description>
+  </metadata>
+</index>

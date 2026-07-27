@@ -3,17 +3,23 @@
 -- @author JewishBidoof
 -- @metapackage
 -- @provides
---   [main] ../scripts/ReaProfessor/ReaProfessor.lua
---   [main] ../scripts/ReaProfessor/cue_list.lua
---   [main] ../scripts/ReaProfessor/snapshots.lua
---   [main] ../scripts/ReaProfessor/chain_rack.lua
---   [main] ../scripts/ReaProfessor/create_channels.lua
---   [main] ../scripts/ReaProfessor/live_mode.lua
---   [main] ../scripts/ReaProfessor/control_panel.lua
---   [main] ../scripts/ReaProfessor/control_service.lua
---   [main] ../scripts/ReaProfessor/mapping.lua
---   [nomain] ../scripts/ReaProfessor/lib/*.lua
---   [data] ../resources/osc/ReaProfessor.ReaperOSC
+--   [main] ../scripts/ReaProfessor/ReaProfessor.lua > ReaProfessor/ReaProfessor.lua
+--   [main] ../scripts/ReaProfessor/cue_list.lua > ReaProfessor/cue_list.lua
+--   [main] ../scripts/ReaProfessor/snapshots.lua > ReaProfessor/snapshots.lua
+--   [main] ../scripts/ReaProfessor/chain_rack.lua > ReaProfessor/chain_rack.lua
+--   [main] ../scripts/ReaProfessor/create_channels.lua > ReaProfessor/create_channels.lua
+--   [main] ../scripts/ReaProfessor/live_mode.lua > ReaProfessor/live_mode.lua
+--   [main] ../scripts/ReaProfessor/control_panel.lua > ReaProfessor/control_panel.lua
+--   [main] ../scripts/ReaProfessor/control_service.lua > ReaProfessor/control_service.lua
+--   [main] ../scripts/ReaProfessor/mapping.lua > ReaProfessor/mapping.lua
+--   [nomain] ../scripts/ReaProfessor/lib/commands.lua > ReaProfessor/lib/commands.lua
+--   [nomain] ../scripts/ReaProfessor/lib/data.lua > ReaProfessor/lib/data.lua
+--   [nomain] ../scripts/ReaProfessor/lib/midi.lua > ReaProfessor/lib/midi.lua
+--   [nomain] ../scripts/ReaProfessor/lib/osc.lua > ReaProfessor/lib/osc.lua
+--   [nomain] ../scripts/ReaProfessor/lib/path.lua > ReaProfessor/lib/path.lua
+--   [nomain] ../scripts/ReaProfessor/lib/routing.lua > ReaProfessor/lib/routing.lua
+--   [nomain] ../scripts/ReaProfessor/lib/ui.lua > ReaProfessor/lib/ui.lua
+--   [data] ../resources/osc/ReaProfessor.ReaperOSC > ReaProfessor.ReaperOSC
 -- @changelog
 --   + Custom MIDI/OSC mapping editor (no default bindings)
 --   + ReaPack metapackage
@@ -21,4 +27,3 @@
 --   Live-oriented REAPER toolkit inspired by LiveProfessor 2: cue lists,
 --   FX snapshots, 1:1 channel routing, record-safe processing, and fully
 --   custom MIDI/OSC maps. Run Actions → ReaProfessor after install.
-

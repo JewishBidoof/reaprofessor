@@ -169,8 +169,14 @@ function Commands.run_named(command, arg)
   elseif command == "channel_mode_dbl" then return Commands.set_channel_mode("double_patch")
   elseif command == "record_safe" then return Commands.apply_record_safe()
   elseif command == "live_mode" then
-    local dir = reaper.GetResourcePath() .. "/Scripts/ReaProfessor/"
-    if reaper.file_exists(dir .. "live_mode.lua") then dofile(dir .. "live_mode.lua") end
+    local src = debug.getinfo(1, "S").source
+    local lib_dir = (src:sub(1, 1) == "@" and src:sub(2):match("(.+[\\/])")) or ""
+    local dir = lib_dir:gsub("[\\/]lib[\\/]$", "/")
+    local path = dir .. "live_mode.lua"
+    if not reaper.file_exists(path) then
+      path = reaper.GetResourcePath() .. "/Scripts/ReaProfessor/live_mode.lua"
+    end
+    if reaper.file_exists(path) then dofile(path) end
     return true
   end
   return false
