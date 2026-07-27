@@ -47,6 +47,7 @@ local function go_to(idx)
 end
 
 local function add_cue()
+  if not Config.actions_enabled() then return Config.deny_action("Add Cue") end
   local name = "Cue " .. tostring(#cues + 1)
   cues[#cues + 1] = {
     id = Data.new_id("cue"),
@@ -60,6 +61,7 @@ local function add_cue()
 end
 
 local function delete_cue()
+  if not Config.actions_enabled() then return Config.deny_action("Delete Cue") end
   if #cues == 0 then return end
   table.remove(cues, selected)
   selected = math.max(1, math.min(selected, #cues))
@@ -69,6 +71,7 @@ local function delete_cue()
 end
 
 local function rename_selected()
+  if not Config.actions_enabled() then return Config.deny_action("Rename Cue") end
   if not cues[selected] then return end
   local retval, new_name = reaper.GetUserInputs("Rename cue", 1, "Name:,extrawidth=200", cues[selected].name)
   if retval and new_name ~= "" then
@@ -120,8 +123,10 @@ local function draw()
             and gfx.mouse_y >= y and gfx.mouse_y <= y + row_h - 2
     if hit and gfx.mouse_cap & 1 == 1 then
       selected = i
-      meta.cue_index = selected
-      Data.save_meta(meta)
+      if Config.actions_enabled() then
+        meta.cue_index = selected
+        Data.save_meta(meta)
+      end
     end
     if hit and gfx.mouse_cap & 2 == 2 then
       -- right-click rename

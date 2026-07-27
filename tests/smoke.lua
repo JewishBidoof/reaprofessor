@@ -28,6 +28,10 @@ local ok, err = pcall(function()
   local Routing = require("routing")
   local Commands = require("commands")
   local MIDI = require("midi")
+  local Config = require("config")
+
+  -- Smoke exercises library APIs directly; enable actions for this harness only.
+  Config.FINALIZED = true
 
   -- Empty maps by default
   Data.save_midi_map({})

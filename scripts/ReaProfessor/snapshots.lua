@@ -46,6 +46,7 @@ local function recall()
 end
 
 local function delete_selected()
+  if not Config.actions_enabled() then return Config.deny_action("Delete Snapshot") end
   if not snaps[selected] then return end
   table.remove(snaps, selected)
   selected = math.max(1, math.min(selected, #snaps))
@@ -58,8 +59,10 @@ local function mode_btn(id, x, y, w, label, value)
   local bg = (mode == value) and UI.colors.selected or UI.colors.panel
   if UI.button(id, x, y, w, 28, label, { bg = bg }) then
     mode = value
-    meta.snapshot_mode = mode
-    Data.save_meta(meta)
+    if Config.actions_enabled() then
+      meta.snapshot_mode = mode
+      Data.save_meta(meta)
+    end
   end
 end
 
@@ -87,8 +90,10 @@ local function draw()
   local sel_bg = selected_only and UI.colors.selected or UI.colors.panel
   if UI.button("sel", 520, 52, 180, 28, selected_only and "Selected tracks" or "All (eligible)", { bg = sel_bg }) then
     selected_only = not selected_only
-    meta.selected_only = selected_only
-    Data.save_meta(meta)
+    if Config.actions_enabled() then
+      meta.selected_only = selected_only
+      Data.save_meta(meta)
+    end
   end
 
   gfx.setfont(3)

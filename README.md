@@ -69,10 +69,10 @@ tests/                  Automated REAPER script checks
 
 ## Status
 
-Active development (v0.3.2):
+Active development (v0.3.3):
 
 - Extensions → ReaProfessor menu installer (restart once after install)
-- Prototype mode: UI browseable, project actions gated until finalized
+- Prototype mode (`Config.FINALIZED = false`): UI/Mapping browseable; Create/GO/Capture/Recall/Live/Control Service/cue edits do not run until finalized
 - 1:1 channel creator, snapshots, cues, custom MIDI/OSC mapping
 - ReaPack metapackage under `Live/ReaProfessor.lua`
 

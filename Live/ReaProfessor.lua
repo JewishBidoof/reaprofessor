@@ -1,5 +1,5 @@
 -- @description ReaProfessor
--- @version 0.3.2
+-- @version 0.3.3
 -- @author JewishBidoof
 -- @metapackage
 -- @provides
@@ -24,9 +24,9 @@
 --   [nomain] ../scripts/ReaProfessor/lib/ui.lua > ReaProfessor/lib/ui.lua
 --   [data] ../resources/osc/ReaProfessor.ReaperOSC > ReaProfessor.ReaperOSC
 -- @changelog
+--   + Prototype mode: all show/project commands gated until finalized
 --   + Extensions → ReaProfessor menu installer
 --   + Fix gfx crash when opening panels from hub
---   + Gate project actions until finalized (UI browse only)
 -- @about
 --   Live-oriented REAPER toolkit inspired by LiveProfessor 2.
 --   Run Actions → ReaProfessor, then "Install Extensions menu".
