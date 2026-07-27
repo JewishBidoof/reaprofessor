@@ -1,0 +1,5 @@
+; ReaProfessor WALTER stub — currently using Default 7.0 layouts via color overlay.
+; When forking images into this folder, set ui_img=ReaProfessor in the .ReaperTheme.
+version 7.0
+use_pngs 1
+use_overlays 1

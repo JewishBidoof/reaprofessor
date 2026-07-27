@@ -1,0 +1,10 @@
+{
+  "install": "bash tools/install_dev_env.sh",
+  "start": "bash tools/start_jack.sh",
+  "terminals": [
+    {
+      "name": "REAPER smoke",
+      "command": "bash tools/smoke_test.sh"
+    }
+  ]
+}

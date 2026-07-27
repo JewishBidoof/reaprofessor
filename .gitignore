@@ -1,0 +1,27 @@
+# Dependencies / build
+node_modules/
+*.o
+*.so
+*.dll
+*.dylib
+
+# REAPER local userdata (never commit)
+.reaper-resource/
+*.RPP-bak
+*.reapeaks
+
+# Unpacked stock theme images (regenerate with tools/unpack_default_theme.sh)
+vendor/themes/
+**/Default_7.0_unpacked/
+**/Default_6.0_unpacked/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# Test output
+/tmp/
+*.log
