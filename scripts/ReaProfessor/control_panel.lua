@@ -1,5 +1,5 @@
 -- @description ReaProfessor - OSC/MIDI Control panel
--- @version 0.3.0
+-- @version 0.3.1
 -- @author JewishBidoof
 -- @noindex
 -- @about Start/stop the control service and open the mapping editor.

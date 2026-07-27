@@ -1,5 +1,5 @@
 -- @description ReaProfessor
--- @version 0.3.0
+-- @version 0.3.1
 -- @author JewishBidoof
 -- @metapackage
 -- @provides
@@ -21,6 +21,7 @@
 --   [nomain] ../scripts/ReaProfessor/lib/ui.lua > ReaProfessor/lib/ui.lua
 --   [data] ../resources/osc/ReaProfessor.ReaperOSC > ReaProfessor.ReaperOSC
 -- @changelog
+--   + Fix ReaPack install paths (ReaProfessor/ subtree)
 --   + Custom MIDI/OSC mapping editor (no default bindings)
 --   + ReaPack metapackage
 -- @about

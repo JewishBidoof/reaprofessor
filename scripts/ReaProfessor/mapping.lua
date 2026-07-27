@@ -1,5 +1,5 @@
 -- @description ReaProfessor - MIDI / OSC Mapping
--- @version 0.3.0
+-- @version 0.3.1
 -- @author JewishBidoof
 -- @noindex
 -- @about Fully customize MIDI and OSC bindings. No defaults are applied.

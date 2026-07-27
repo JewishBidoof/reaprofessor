@@ -1,5 +1,5 @@
 -- @description ReaProfessor - Control Service (OSC ExtState + MIDI)
--- @version 0.3.0
+-- @version 0.3.1
 -- @author JewishBidoof
 -- @noindex
 -- @about Background defer loop using user-defined MIDI/OSC maps only (no defaults).
