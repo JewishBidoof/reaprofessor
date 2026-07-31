@@ -1,5 +1,5 @@
 -- @description ReaProfessor
--- @version 0.3.7
+-- @version 0.3.8
 -- @author JewishBidoof
 -- @metapackage
 -- @provides
@@ -25,11 +25,10 @@
 --   [nomain] ../scripts/ReaProfessor/lib/ui.lua > ReaProfessor/lib/ui.lua
 --   [data] ../resources/osc/ReaProfessor.ReaperOSC > ReaProfessor.ReaperOSC
 -- @changelog
+--   + Fix recall: UI uses snap mode; default full; always store FXCHAIN; params auto-rebuilds
+--   + + CUE captures full FX; LiveProfessor-inspired Cue/Snapshots/Chains UI
 --   + Fix full snapshot recall truncating multi-FX chains (FXCHAIN nesting)
---   + Store/restore normalized params; match FX by identity
 --   + Stop customizing Extensions menu (was nesting ReaPack/SWS); restore stock menu
---   + Fix cues: + CUE captures FX snapshot and links it
---   + Actions-list registration only
 -- @about
 --   Live-oriented REAPER toolkit inspired by LiveProfessor 2.
 --   Run Actions → Show action list → ReaProfessor.
