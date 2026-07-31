@@ -1,12 +1,13 @@
--- @description ReaProfessor shared UI helpers (gfx) — LiveProfessor-inspired
--- @version 0.3.9
+-- @description ReaProfessor shared UI helpers (gfx) — LP-inspired + HiDPI
+-- @version 0.4.0
 -- @author JewishBidoof
 -- @noindex
+--
+-- Logical coordinates throughout. Set gfx.ext_retina before init; scale fonts
+-- and drawing by gfx.ext_retina so Retina/M3 Mac windows stay sharp.
 
 local UI = {}
 
--- Palette drawn from LiveProfessor 2: near-black panels, cool selection blue,
--- signal green GO, pink/red armed/danger. Avoid purple/glow AI defaults.
 UI.colors = {
   bg         = {0.07, 0.07, 0.08},
   panel      = {0.14, 0.14, 0.15},
@@ -36,61 +37,116 @@ UI.colors = {
 
 UI.FONT = "Noto Sans"
 UI.FONT_MONO = "JetBrains Mono"
+UI.scale = 1
+UI._retina_seen = nil
+
+local function os_is_mac()
+  local ok, osname = pcall(reaper.GetOS)
+  if not ok or not osname then return false end
+  return tostring(osname):lower():find("osx", 1, true) ~= nil
+      or tostring(osname):lower():find("mac", 1, true) ~= nil
+end
+
+-- Prefer fonts that exist on macOS Retina; fall back gracefully.
+if os_is_mac() then
+  UI.FONT = "Helvetica Neue"
+  UI.FONT_MONO = "Menlo"
+end
+
+function UI.sx(v)
+  return (tonumber(v) or 0) * (UI.scale or 1)
+end
 
 function UI.set_color(c, a)
   gfx.set(c[1], c[2], c[3], a or 1)
 end
 
+function UI.apply_fonts()
+  local s = UI.scale or 1
+  gfx.setfont(1, UI.FONT, math.floor(15 * s + 0.5))
+  gfx.setfont(2, UI.FONT, math.floor(20 * s + 0.5))
+  gfx.setfont(3, UI.FONT, math.floor(12 * s + 0.5))
+  gfx.setfont(4, UI.FONT_MONO, math.floor(12 * s + 0.5))
+end
+
+--- Refresh scale from gfx.ext_retina (call once per frame).
+function UI.frame_begin()
+  local s = tonumber(gfx.ext_retina) or 1
+  if s < 1 then s = 1 end
+  if s > 4 then s = 4 end
+  if UI._retina_seen ~= s then
+    UI.scale = s
+    UI._retina_seen = s
+    UI.apply_fonts()
+  end
+end
+
+--- Logical window size (points), independent of retina backing store.
+function UI.dims()
+  UI.frame_begin()
+  local s = UI.scale or 1
+  return gfx.w / s, gfx.h / s
+end
+
+function UI.mouse()
+  local s = UI.scale or 1
+  return gfx.mouse_x / s, gfx.mouse_y / s, gfx.mouse_cap
+end
+
 function UI.fill_rect(x, y, w, h, c, a)
   UI.set_color(c, a)
-  gfx.rect(x, y, w, h, 1)
+  gfx.rect(UI.sx(x), UI.sx(y), UI.sx(w), UI.sx(h), 1)
 end
 
 function UI.stroke_rect(x, y, w, h, c, a)
   UI.set_color(c, a)
-  gfx.rect(x, y, w, h, 0)
+  gfx.rect(UI.sx(x), UI.sx(y), UI.sx(w), UI.sx(h), 0)
 end
 
 function UI.hline(x, y, w, c, a)
   UI.set_color(c or UI.colors.border, a)
-  gfx.line(x, y, x + w, y)
+  local x0, y0 = UI.sx(x), UI.sx(y)
+  gfx.line(x0, y0, x0 + UI.sx(w), y0)
 end
 
 function UI.vline(x, y, h, c, a)
   UI.set_color(c or UI.colors.border, a)
-  gfx.line(x, y, x, y + h)
+  local x0, y0 = UI.sx(x), UI.sx(y)
+  gfx.line(x0, y0, x0, y0 + UI.sx(h))
 end
 
 function UI.label(x, y, text, c, flags)
   UI.set_color(c or UI.colors.text)
-  gfx.x, gfx.y = x, y
+  gfx.x, gfx.y = UI.sx(x), UI.sx(y)
   gfx.drawstr(tostring(text or ""), flags or 0)
 end
 
 function UI.measure(text)
-  return gfx.measurestr(tostring(text or ""))
+  local tw, th = gfx.measurestr(tostring(text or ""))
+  local s = UI.scale or 1
+  return tw / s, th / s
 end
 
 function UI.button(id, x, y, w, h, label, opts)
   opts = opts or {}
   local bg = opts.bg or UI.colors.panel
   local fg = opts.fg or UI.colors.text
-  local hover = gfx.mouse_x >= x and gfx.mouse_x <= x + w
-            and gfx.mouse_y >= y and gfx.mouse_y <= y + h
+  local mx, my, cap = UI.mouse()
+  local hover = mx >= x and mx <= x + w and my >= y and my <= y + h
   if hover then
     bg = opts.hover or { math.min(1, bg[1] + 0.06), math.min(1, bg[2] + 0.06), math.min(1, bg[3] + 0.06) }
   end
   UI.fill_rect(x, y, w, h, bg)
   UI.stroke_rect(x, y, w, h, opts.border or UI.colors.border)
-  gfx.setfont(opts.font or 1)
-  local tw, th = gfx.measurestr(label)
+  if opts.font then gfx.setfont(opts.font) else gfx.setfont(1) end
+  local tw, th = UI.measure(label)
   UI.label(x + (w - tw) / 2, y + (h - th) / 2, label, fg)
 
   local clicked = false
-  if hover and gfx.mouse_cap & 1 == 1 then
+  if hover and cap & 1 == 1 then
     UI._down = UI._down or {}
     UI._down[id] = true
-  elseif UI._down and UI._down[id] and gfx.mouse_cap & 1 == 0 then
+  elseif UI._down and UI._down[id] and cap & 1 == 0 then
     if hover then clicked = true end
     UI._down[id] = nil
   end
@@ -127,14 +183,17 @@ function UI.pips(x, y, n, on_count, warn_at)
   end
 end
 
-function UI.header_bar(w, title, subtitle)
+function UI.header_bar(w, title, subtitle, opts)
+  opts = opts or {}
   UI.fill_rect(0, 0, w, 48, UI.colors.header)
   UI.hline(0, 48, w, UI.colors.border)
+  -- Leave room on the left for an optional ← Back button on child pages.
+  local title_x = opts.title_x or 96
   gfx.setfont(2)
-  UI.label(16, 12, title, UI.colors.text)
+  UI.label(title_x, 12, title, UI.colors.text)
   if subtitle and subtitle ~= "" then
     gfx.setfont(3)
-    UI.label(16, 32, subtitle, UI.colors.muted)
+    UI.label(title_x, 32, subtitle, UI.colors.muted)
   end
 end
 
@@ -158,11 +217,23 @@ function UI.checkbox(id, x, y, label, checked)
 end
 
 function UI.init(title, w, h, dock)
+  -- Request retina backing store BEFORE gfx.init (Mac / HiDPI).
+  gfx.ext_retina = 1
   gfx.init(title, w or 720, h or 480, dock or 0)
-  gfx.setfont(1, UI.FONT, 15)
-  gfx.setfont(2, UI.FONT, 20)
-  gfx.setfont(3, UI.FONT, 12)
-  gfx.setfont(4, UI.FONT_MONO, 12)
+  -- gfx.ext_retina is overwritten with the effective scale after init.
+  local s = tonumber(gfx.ext_retina) or 1
+  if s < 1 then s = 1 end
+  UI.scale = s
+  UI._retina_seen = s
+  UI.apply_fonts()
+end
+
+--- Standard page loop teardown: quit gfx, then open Nav pending if any.
+function UI.quit_and_nav(Nav)
+  gfx.quit()
+  if Nav and Nav.defer_pending then
+    Nav.defer_pending()
+  end
 end
 
 return UI

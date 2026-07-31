@@ -10,6 +10,14 @@ local script_dir = (src:sub(1, 1) == "@" and src:sub(2):match("(.+[\\/])")) or r
 package.path = script_dir .. "lib/?.lua;" .. res .. "lib/?.lua;" .. package.path
 
 local UI = require("ui")
+local Nav = require("nav")
+
+local THIS = script_dir .. "mapping.lua"
+if not reaper.file_exists(THIS) then
+  local altp = reaper.GetResourcePath() .. "/Scripts/Live/ReaProfessor/mapping.lua"
+  if reaper.file_exists(altp) then THIS = altp end
+end
+Nav.set_current(THIS)
 local Data = require("data")
 local MIDI = require("midi")
 local OSC = require("osc")
@@ -183,8 +191,8 @@ local function draw_list(w, h)
     local bind = list[i]
     local bg = (i == selected) and UI.colors.selected or ((i % 2 == 0) and UI.colors.row_alt or UI.colors.panel)
     UI.fill_rect(12, y, w - 24, row_h - 2, bg)
-    if gfx.mouse_x >= 12 and gfx.mouse_x <= w - 12 and gfx.mouse_y >= y and gfx.mouse_y <= y + row_h - 2 then
-      if gfx.mouse_cap & 1 == 1 then selected = i end
+    if mx >= 12 and mx <= w - 12 and my >= y and my <= y + row_h - 2 then
+      if mcap & 1 == 1 then selected = i end
     end
     gfx.setfont(1)
     local text = (tab == "midi") and MIDI.describe(bind) or OSC.describe(bind)
@@ -272,26 +280,30 @@ local function tick_learn()
 end
 
 local function draw()
-  local w, h = gfx.w, gfx.h
+  local w, h = UI.dims()
+  local mx, my, mcap = UI.mouse()
   UI.fill_rect(0, 0, w, h, UI.colors.bg)
+  if Nav.back_button(UI, 8, 10) then running = false end
   gfx.setfont(2)
-  UI.label(16, 14, "MAPPING", UI.colors.accent)
+  UI.label(96, 14, "MAPPING", UI.colors.accent)
   gfx.setfont(3)
-  UI.label(150, 22, "Customize MIDI & OSC — nothing is bound by default", UI.colors.muted)
+  UI.label(200, 22, "Customize MIDI & OSC — nothing is bound by default", UI.colors.muted)
   draw_tabs(w)
   draw_list(w, h)
   draw_actions(w, h)
   tick_learn()
 
   local ch = gfx.getchar()
-  if ch == 27 or ch < 0 then running = false
+  if ch == 27 or ch < 0 then
+    if Nav.can_back() then Nav.back() end
+    running = false
   elseif ch == ("m"):byte() then tab = "midi"; ensure_selection()
   elseif ch == ("o"):byte() then tab = "osc"; ensure_selection()
   end
 end
 
 local function loop()
-  if not running then gfx.quit(); return end
+  if not running then UI.quit_and_nav(Nav); return end
   draw()
   gfx.update()
   reaper.defer(loop)

@@ -1,7 +1,7 @@
--- @description ReaProfessor - Restore Extensions menu
--- @version 0.3.9
+-- @description ReaProfessor - Restore / install Extensions menu entry
+-- @version 0.4.0
 -- @author JewishBidoof
--- @about Registers ReaProfessor in Actions and removes our prior Extensions menu customization (which nested other extensions).
+-- @about Registers ReaProfessor in Actions and installs Extensions → ReaProfessor (flat item).
 -- @noindex
 
 local res = reaper.GetResourcePath() .. "/Scripts/ReaProfessor/"
@@ -23,7 +23,7 @@ local ok, msg, named, cmd = Menu.install(hub)
 local text
 if ok then
   text = string.format(
-    "%s\n\nAction ID: %s\nCommand: %s\n\nReaProfessor stays in the Actions list.\nWe do not add an Extensions menu item — that nesting broke ReaPack/SWS.\n\nIf the message asks you to quit, use File → Quit, then reopen.",
+    "%s\n\nAction ID: %s\nCommand: %s\n\nExtensions → ReaProfessor is a flat menu item (not a submenu),\nso ReaPack/SWS stay as separate top-level Extensions entries.\n\nIf the message asks you to quit, use File → Quit, then reopen.",
     tostring(msg),
     tostring(named),
     tostring(cmd)

@@ -1,5 +1,5 @@
--- ReaProfessor startup hook — register Actions only; never customize Extensions.
--- (Earlier builds wrote [Main extensions] and nested other extensions in a submenu.)
+-- ReaProfessor startup hook — register Actions + keep Extensions shortcut.
+-- Adds a flat Extensions → ReaProfessor item (never a popup/submenu).
 
 local res = reaper.GetResourcePath()
 local candidates = {
@@ -22,10 +22,12 @@ package.path = lib_dir .. "?.lua;" .. package.path
 local ok, Menu = pcall(require, "menu")
 if not ok or not Menu then return end
 
--- Undo any prior menu.ini hijack, then keep the hub registered in Actions.
-Menu.restore_extensions_menu()
-Menu.remove_startup_hook()
 local hub = Menu.find_hub and Menu.find_hub() or nil
 if hub then
   Menu.register_hub(hub)
+  local named = reaper.GetExtState("ReaProfessor", "menu_named_cmd")
+  if named and named ~= "" then
+    Menu.ensure_extensions_item(named, "ReaProfessor")
+  end
+  Menu.register_atexit_flush()
 end

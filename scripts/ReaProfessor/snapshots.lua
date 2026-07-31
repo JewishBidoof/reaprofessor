@@ -10,6 +10,14 @@ local script_dir = (src:sub(1, 1) == "@" and src:sub(2):match("(.+[\\/])")) or r
 package.path = script_dir .. "lib/?.lua;" .. res .. "lib/?.lua;" .. package.path
 
 local UI = require("ui")
+local Nav = require("nav")
+
+local THIS = script_dir .. "snapshots.lua"
+if not reaper.file_exists(THIS) then
+  local altp = reaper.GetResourcePath() .. "/Scripts/Live/ReaProfessor/snapshots.lua"
+  if reaper.file_exists(altp) then THIS = altp end
+end
+Nav.set_current(THIS)
 local Data = require("data")
 local Commands = require("commands")
 local Config = require("config")
@@ -128,8 +136,10 @@ local function mode_btn(id, x, y, w, label, value)
 end
 
 local function draw()
-  local w, h = gfx.w, gfx.h
+  local w, h = UI.dims()
+  local mx, my, mcap = UI.mouse()
   UI.fill_rect(0, 0, w, h, UI.colors.bg)
+  if Nav.back_button(UI, 8, 10) then running = false end
   UI.header_bar(w, "Global Snapshots", "Double-click to recall  ·  Alt+style filters below")
 
   gfx.setfont(3)
@@ -187,8 +197,8 @@ local function draw()
     local col = COLOR_PIP[(snap.color or 0) % 6 + 1]
     UI.fill_rect(18, y + 10, 8, 28, col)
 
-    local hover = gfx.mouse_x >= 10 and gfx.mouse_x <= w - 10 and gfx.mouse_y >= y and gfx.mouse_y <= y + row_h - 4
-    local down = gfx.mouse_cap & 1 == 1
+    local hover = mx >= 10 and mx <= w - 10 and my >= y and my <= y + row_h - 4
+    local down = mcap & 1 == 1
     if hover and down and not UI._snap_down then
       if selected == i and UI._last_snap_i == i and (reaper.time_precise() - (UI._last_snap_t or 0) < 0.35) then
         selected = i
@@ -216,7 +226,7 @@ local function draw()
     end
   end
 
-  if gfx.mouse_cap & 1 == 0 then UI._snap_down = false end
+  if mcap & 1 == 0 then UI._snap_down = false end
 
   local by = h - bottom_bar
   UI.fill_rect(0, by, w, bottom_bar, UI.colors.header)
@@ -231,7 +241,9 @@ local function draw()
   UI.label(240, by + 20, status, UI.colors.muted)
 
   local ch = gfx.getchar()
-  if ch == 27 or ch < 0 then running = false
+  if ch == 27 or ch < 0 then
+    if Nav.can_back() then Nav.back() end
+    running = false
   elseif ch == 13 then recall()
   elseif ch == ("c"):byte() or ch == ("n"):byte() then capture()
   elseif ch == ("u"):byte() then update_selected()
@@ -239,7 +251,7 @@ local function draw()
 end
 
 local function loop()
-  if not running then gfx.quit(); return end
+  if not running then UI.quit_and_nav(Nav); return end
   draw()
   gfx.update()
   reaper.defer(loop)

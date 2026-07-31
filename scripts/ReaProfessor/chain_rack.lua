@@ -10,6 +10,14 @@ local script_dir = (src:sub(1, 1) == "@" and src:sub(2):match("(.+[\\/])")) or r
 package.path = script_dir .. "lib/?.lua;" .. res .. "lib/?.lua;" .. package.path
 
 local UI = require("ui")
+local Nav = require("nav")
+
+local THIS = script_dir .. "chain_rack.lua"
+if not reaper.file_exists(THIS) then
+  local altp = reaper.GetResourcePath() .. "/Scripts/Live/ReaProfessor/chain_rack.lua"
+  if reaper.file_exists(altp) then THIS = altp end
+end
+Nav.set_current(THIS)
 local Config = require("config")
 
 local selected = 0
@@ -73,8 +81,10 @@ local function draw_node(x, y, nw, nh, title, sub, opts)
 end
 
 local function draw()
-  local w, h = gfx.w, gfx.h
+  local w, h = UI.dims()
+  local mx, my, mcap = UI.mouse()
   UI.fill_rect(0, 0, w, h, UI.colors.bg)
+  if Nav.back_button(UI, 8, 10) then running = false end
   UI.header_bar(w, "Chains", "Each track is a signal chain  ·  click selects  ·  double-click opens FX")
 
   if UI.button("addtr", w - 140, 10, 124, 28, "+ Chain", { bg = UI.colors.go, fg = UI.colors.go_fg }) then
@@ -117,9 +127,9 @@ local function draw()
       bg = UI.colors.panel2,
     })
 
-    local hit_header = gfx.mouse_x >= x and gfx.mouse_x <= x + node_w
-                   and gfx.mouse_y >= y + 10 and gfx.mouse_y <= y + 10 + node_h
-    if hit_header and gfx.mouse_cap & 1 == 1 then
+    local hit_header = mx >= x and mx <= x + node_w
+                   and my >= y + 10 and my <= y + 10 + node_h
+    if hit_header and mcap & 1 == 1 then
       selected = i
       reaper.SetOnlyTrackSelected(chain.track)
     end
@@ -143,9 +153,9 @@ local function draw()
         bg = fx.enabled and UI.colors.panel or UI.colors.row_alt,
       })
 
-      local hit = gfx.mouse_x >= x and gfx.mouse_x <= x + node_w
-              and gfx.mouse_y >= y + 10 and gfx.mouse_y <= y + 10 + node_h
-      if hit and gfx.mouse_cap & 1 == 1 then
+      local hit = mx >= x and mx <= x + node_w
+              and my >= y + 10 and my <= y + 10 + node_h
+      if hit and mcap & 1 == 1 then
         selected = i
         reaper.SetOnlyTrackSelected(chain.track)
         if UI._last_fx == (i .. ":" .. fi) and (reaper.time_precise() - (UI._last_fx_t or 0) < 0.35) then
@@ -173,11 +183,13 @@ local function draw()
   end
 
   local ch = gfx.getchar()
-  if ch == 27 or ch < 0 then running = false end
+  if ch == 27 or ch < 0 then
+    if Nav.can_back() then Nav.back() end
+    running = false end
 end
 
 local function loop()
-  if not running then gfx.quit(); return end
+  if not running then UI.quit_and_nav(Nav); return end
   draw()
   gfx.update()
   reaper.defer(loop)

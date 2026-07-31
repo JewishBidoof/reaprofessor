@@ -2,6 +2,9 @@
 
 Target: make REAPER feel like a dedicated live plugin host instead of a studio DAW.
 
+Open via **Extensions → ReaProfessor** or Actions. Child windows use **← Back** to return to the hub.
+Gfx UI is HiDPI-aware (`gfx.ext_retina`).
+
 ## Priority 1 — Show control + live I/O (current)
 
 | Feature | LP2 behavior | ReaProfessor approach |

@@ -10,6 +10,14 @@ local script_dir = (src:sub(1, 1) == "@" and src:sub(2):match("(.+[\\/])")) or r
 package.path = script_dir .. "lib/?.lua;" .. res .. "lib/?.lua;" .. package.path
 
 local UI = require("ui")
+local Nav = require("nav")
+
+local THIS = script_dir .. "control_panel.lua"
+if not reaper.file_exists(THIS) then
+  local altp = reaper.GetResourcePath() .. "/Scripts/Live/ReaProfessor/control_panel.lua"
+  if reaper.file_exists(altp) then THIS = altp end
+end
+Nav.set_current(THIS)
 local Data = require("data")
 local Commands = require("commands")
 local Config = require("config")
@@ -48,12 +56,14 @@ local function open_mapping()
 end
 
 local function draw()
-  local w, h = gfx.w, gfx.h
+  local w, h = UI.dims()
+  local mx, my, mcap = UI.mouse()
   UI.fill_rect(0, 0, w, h, UI.colors.bg)
+  if Nav.back_button(UI, 8, 10) then running = false end
   gfx.setfont(2)
-  UI.label(16, 14, "CONTROL", UI.colors.accent)
+  UI.label(96, 14, "CONTROL", UI.colors.accent)
   gfx.setfont(3)
-  UI.label(140, 22, "Service + custom MIDI/OSC maps", UI.colors.muted)
+  UI.label(200, 22, "Service + custom MIDI/OSC maps", UI.colors.muted)
 
   local midi_n = #Data.load_midi_map()
   local osc_n = #Data.load_osc_map()
@@ -89,17 +99,19 @@ local function draw()
   UI.label(24, h - 28, status, UI.colors.muted)
 
   local ch = gfx.getchar()
-  if ch == 27 or ch < 0 then running = false end
+  if ch == 27 or ch < 0 then
+    if Nav.can_back() then Nav.back() end
+    running = false
+  end
 end
 
 local function loop()
   if not running then
-    gfx.quit()
     if pending_open then
-      local path = pending_open
+      Nav.go(pending_open)
       pending_open = nil
-      reaper.defer(function() dofile(path) end)
     end
+    UI.quit_and_nav(Nav)
     return
   end
   draw()

@@ -1,15 +1,16 @@
--- @description ReaProfessor action registration (no Extensions menu hijack)
--- @version 0.3.9
+-- @description ReaProfessor action + Extensions menu registration
+-- @version 0.4.0
 -- @author JewishBidoof
 -- @noindex
 --
--- Pure ReaScript cannot append to Extensions without customizing [Main extensions]
--- in reaper-menu.ini. That customization nests ReaPack/SWS/etc. under a submenu.
--- We only register the hub in the Action List, and we remove any prior
--- [Main extensions] edits we made so the stock Extensions menu is restored.
+-- Registers the hub in the Action List and adds a flat Extensions → ReaProfessor
+-- item. Uses a plain command item (never a popup/submenu id) so ReaPack/SWS
+-- that inject via hookcustommenu stay top-level siblings.
+-- Customizing [Main extensions] requires a full REAPER quit/reopen once.
 
 local Menu = {}
 
+local MENU_TITLE = "ReaProfessor"
 local SECTION = "Main extensions"
 local FLAG_KEY = "extensions_menu_installed"
 local PENDING_KEY = "menu_named_cmd"
@@ -37,7 +38,6 @@ local function normalize_path(path)
   return path:gsub("\\", "/")
 end
 
---- Register hub script into the Action List; returns numeric cmd id and named id (_RS…).
 function Menu.register_hub(hub_path)
   hub_path = normalize_path(hub_path)
   if not hub_path or not reaper.AddRemoveReaScript then
@@ -104,6 +104,18 @@ local function serialize_sections(sections, order)
   return table.concat(parts, "\n")
 end
 
+local function next_item_index(body)
+  local max_idx = -1
+  for _, line in ipairs(body) do
+    local idx = line:match("^item_(%d+)=")
+    if idx then
+      idx = tonumber(idx) or -1
+      if idx > max_idx then max_idx = idx end
+    end
+  end
+  return max_idx + 1
+end
+
 local function line_is_ours(line, named_cmd)
   if not line or line:match("^%s*$") then return false end
   if named_cmd and named_cmd ~= "" and line:find(named_cmd, 1, true) then
@@ -127,9 +139,64 @@ local function line_is_item(line)
   return line and line:match("^item_%d+=") ~= nil
 end
 
---- Remove ReaProfessor entries from [Main extensions].
---- If that leaves the section empty (or separators only), delete the section so
---- REAPER restores the default Extensions menu (ReaPack/SWS at top level).
+local function body_has_cmd(body, named_cmd)
+  for _, line in ipairs(body) do
+    if named_cmd and line:find(named_cmd, 1, true) then return true end
+    if line_is_ours(line, named_cmd) then return true end
+  end
+  return false
+end
+
+--- Add a flat Extensions → ReaProfessor command item (never a popup/submenu).
+function Menu.ensure_extensions_item(named_cmd, title)
+  title = title or MENU_TITLE
+  if not named_cmd or named_cmd == "" then
+    return false, false, "Hub action is not registered"
+  end
+
+  local path = reaper.GetResourcePath() .. "/reaper-menu.ini"
+  local text = read_file(path) or ""
+  local sections, order = parse_sections(text)
+
+  if not sections[SECTION] then
+    sections[SECTION] = {}
+    order[#order + 1] = SECTION
+  end
+
+  local body = sections[SECTION]
+  if body_has_cmd(body, named_cmd) then
+    reaper.SetExtState("ReaProfessor", FLAG_KEY, "1", true)
+    return true, false, "Extensions → ReaProfessor is already installed.\n\nIf you do not see it, quit REAPER fully (File → Quit) and reopen."
+  end
+
+  -- Append after a separator when the section already has real items
+  local has_items = false
+  for _, line in ipairs(body) do
+    if line_is_item(line) and not line_is_separator(line) then
+      has_items = true
+      break
+    end
+  end
+  if has_items then
+    local last = body[#body]
+    if last and not line_is_separator(last) and not last:match("^%s*$") then
+      body[#body + 1] = string.format("item_%d=-1", next_item_index(body))
+    end
+  end
+
+  -- Flat command item: "_RSxxxx Title" — NOT "N Title" (that creates a submenu).
+  body[#body + 1] = string.format("item_%d=%s %s", next_item_index(body), named_cmd, title)
+  sections[SECTION] = body
+
+  if not write_file(path, serialize_sections(sections, order)) then
+    return false, false, "Could not write reaper-menu.ini"
+  end
+  reaper.SetExtState("ReaProfessor", FLAG_KEY, "1", true)
+  return true, true, "Added Extensions → ReaProfessor.\n\nQuit REAPER fully (File → Quit), then reopen to see it.\nReaPack/SWS stay as separate Extensions items."
+end
+
+--- Remove only our Extensions entry. If the section becomes empty, delete it so
+--- REAPER falls back to the stock Extensions menu (fixes accidental nesting).
 function Menu.restore_extensions_menu()
   local path = reaper.GetResourcePath() .. "/reaper-menu.ini"
   local text = read_file(path)
@@ -179,7 +246,7 @@ function Menu.restore_extensions_menu()
       if name ~= SECTION then new_order[#new_order + 1] = name end
     end
     order = new_order
-    changed = true
+    changed = removed > 0 or true
   elseif removed > 0 then
     sections[SECTION] = kept
     changed = true
@@ -198,12 +265,11 @@ function Menu.restore_extensions_menu()
 
   reaper.DeleteExtState("ReaProfessor", FLAG_KEY, true)
   if changed then
-    return true, true, "Restored Extensions menu defaults (ReaPack/SWS back at top level).\n\nQuit REAPER fully (File → Quit), then reopen."
+    return true, true, "Removed ReaProfessor from Extensions (stock layout restored).\n\nQuit REAPER fully, then reopen."
   end
-  return true, false, "Extensions menu already using defaults"
+  return true, false, "No ReaProfessor Extensions entry to remove"
 end
 
---- Remove our Scripts/__startup.lua snippet that re-wrote the Extensions menu.
 function Menu.remove_startup_hook()
   local startup = reaper.GetResourcePath() .. "/Scripts/__startup.lua"
   local existing = read_file(startup)
@@ -216,7 +282,6 @@ function Menu.remove_startup_hook()
   end
 
   local function opens_block(line)
-    -- crude but enough for our generated snippet + typical Lua
     if line:match("^%s*%-%-") then return false end
     if line:match("%f[%w]function%f[%W]") then return true end
     if line:match("%f[%w]then%f[%W]") then return true end
@@ -241,7 +306,6 @@ function Menu.remove_startup_hook()
         or line:find("never customize Extensions", 1, true))
     if start_block then
       i = i + 1
-      -- Optional blank lines then a do/if block
       while i <= #lines and lines[i]:match("^%s*$") do i = i + 1 end
       if i <= #lines and opens_block(lines[i]) then
         local depth = 1
@@ -259,7 +323,6 @@ function Menu.remove_startup_hook()
   end
 
   local cleaned = table.concat(out, "\n"):gsub("\n\n\n+", "\n\n"):gsub("^%s+", ""):gsub("%s+$", "")
-  -- Leftover stray ends from a partial prior cleanup
   if cleaned == "" or cleaned == "end" or cleaned:match("^end%s*$") then
     os.remove(startup)
     return true
@@ -267,14 +330,58 @@ function Menu.remove_startup_hook()
   return write_file(startup, cleaned .. "\n")
 end
 
---- Register Actions entry only; undo any prior Extensions menu customization.
+function Menu.ensure_startup_hook(hub_path)
+  hub_path = normalize_path(hub_path)
+  if not hub_path then return false end
+  local dir = hub_path:match("(.+[\\/])") or ""
+  local hook = dir .. "startup_hook.lua"
+  if not reaper.file_exists(hook) then return false end
+
+  local startup = reaper.GetResourcePath() .. "/Scripts/__startup.lua"
+  local existing = read_file(startup) or ""
+  if existing:find("ReaProfessor/startup_hook.lua", 1, true)
+     or existing:find("startup_hook.lua", 1, true) then
+    return true
+  end
+
+  local snippet = string.format([[
+-- ReaProfessor: keep Extensions menu entry registered
+do
+  local hook = %q
+  if reaper.file_exists(hook) then
+    local ok, err = pcall(dofile, hook)
+    if not ok then reaper.ShowConsoleMsg("[ReaProfessor] startup hook: " .. tostring(err) .. "\n") end
+  end
+end
+]], hook)
+
+  local data = existing
+  if data ~= "" and not data:match("\n$") then data = data .. "\n" end
+  return write_file(startup, data .. snippet)
+end
+
+local atexit_registered = false
+local function flush_pending_menu()
+  local named = reaper.GetExtState("ReaProfessor", PENDING_KEY)
+  if not named or named == "" then return end
+  Menu.ensure_extensions_item(named, MENU_TITLE)
+end
+
+function Menu.register_atexit_flush()
+  if atexit_registered then return end
+  atexit_registered = true
+  reaper.atexit(flush_pending_menu)
+end
+
+--- Register Actions + ensure Extensions → ReaProfessor shortcut.
 function Menu.install(hub_path)
   local cmd, named = Menu.register_hub(hub_path)
   if cmd == 0 or not named then
     return false, "AddRemoveReaScript failed — use Actions → Load ReaScript… on ReaProfessor.lua, then retry."
   end
-  Menu.remove_startup_hook()
-  local ok, _, msg = Menu.restore_extensions_menu()
+  Menu.ensure_startup_hook(hub_path)
+  Menu.register_atexit_flush()
+  local ok, _, msg = Menu.ensure_extensions_item(named, MENU_TITLE)
   if not ok then return false, msg, named, cmd end
   return true, msg, named, cmd
 end

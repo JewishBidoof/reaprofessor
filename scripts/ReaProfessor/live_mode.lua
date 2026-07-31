@@ -10,6 +10,14 @@ local script_dir = (src:sub(1, 1) == "@" and src:sub(2):match("(.+[\\/])")) or r
 package.path = script_dir .. "lib/?.lua;" .. res .. "lib/?.lua;" .. package.path
 
 local UI = require("ui")
+local Nav = require("nav")
+
+local THIS = script_dir .. "live_mode.lua"
+if not reaper.file_exists(THIS) then
+  local altp = reaper.GetResourcePath() .. "/Scripts/Live/ReaProfessor/live_mode.lua"
+  if reaper.file_exists(altp) then THIS = altp end
+end
+Nav.set_current(THIS)
 local Data = require("data")
 local Commands = require("commands")
 local Config = require("config")
@@ -69,15 +77,17 @@ local function go()
 end
 
 local function draw()
-  local w, h = gfx.w, gfx.h
+  local w, h = UI.dims()
+  local mx, my, mcap = UI.mouse()
   local cues, snaps, meta_now = refresh()
   UI.fill_rect(0, 0, w, h, UI.colors.bg)
+  if Nav.back_button(UI, 8, 10) then running = false end
 
   UI.fill_rect(0, 0, w, 56, UI.colors.header)
   gfx.setfont(2)
-  UI.label(16, 10, "Live Mode", UI.colors.text)
+  UI.label(96, 10, "Live Mode", UI.colors.text)
   gfx.setfont(3)
-  UI.label(16, 34, "Space = GO NEXT  ·  Esc = exit", UI.colors.muted)
+  UI.label(96, 34, "Space = GO NEXT  ·  Esc = exit", UI.colors.muted)
 
   local idx = meta_now.cue_index or 1
   if idx < 1 then idx = 1 end
@@ -122,13 +132,13 @@ local function draw()
     armed = not armed
   end
   if UI.button("cues", 418, 218, 100, 36, "Cue List") then
+    Nav.go(Nav.resolve("cue_list.lua", script_dir))
     running = false
-    reaper.defer(function() dofile(script_dir .. "cue_list.lua") end)
     return
   end
   if UI.button("snaps", 528, 218, 100, 36, "Snapshots") then
+    Nav.go(Nav.resolve("snapshots.lua", script_dir))
     running = false
-    reaper.defer(function() dofile(script_dir .. "snapshots.lua") end)
     return
   end
 
@@ -152,16 +162,17 @@ local function draw()
 
   local ch = gfx.getchar()
   if ch == 27 or ch < 0 then
-    running = false
+    if Nav.can_back() then Nav.back() end
     meta_now.live_mode = false
     Data.save_meta(meta_now)
+    running = false
   elseif ch == 32 then
     go()
   end
 end
 
 local function loop()
-  if not running then gfx.quit(); return end
+  if not running then UI.quit_and_nav(Nav); return end
   draw()
   gfx.update()
   reaper.defer(loop)

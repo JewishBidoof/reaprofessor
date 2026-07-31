@@ -1,5 +1,5 @@
 -- @description ReaProfessor
--- @version 0.3.9
+-- @version 0.4.0
 -- @author JewishBidoof
 -- @metapackage
 -- @provides
@@ -19,6 +19,7 @@
 --   [nomain] ../scripts/ReaProfessor/lib/config.lua > ReaProfessor/lib/config.lua
 --   [nomain] ../scripts/ReaProfessor/lib/data.lua > ReaProfessor/lib/data.lua
 --   [nomain] ../scripts/ReaProfessor/lib/menu.lua > ReaProfessor/lib/menu.lua
+--   [nomain] ../scripts/ReaProfessor/lib/nav.lua > ReaProfessor/lib/nav.lua
 --   [nomain] ../scripts/ReaProfessor/lib/midi.lua > ReaProfessor/lib/midi.lua
 --   [nomain] ../scripts/ReaProfessor/lib/osc.lua > ReaProfessor/lib/osc.lua
 --   [nomain] ../scripts/ReaProfessor/lib/path.lua > ReaProfessor/lib/path.lua
@@ -26,10 +27,11 @@
 --   [nomain] ../scripts/ReaProfessor/lib/ui.lua > ReaProfessor/lib/ui.lua
 --   [data] ../resources/osc/ReaProfessor.ReaperOSC > ReaProfessor.ReaperOSC
 -- @changelog
---   + LP2 cue list: hierarchical actions, tool palette, inspector (fade/pre/post)
---   + Navigator view; Live Mode perform surface; snapshots fire-cue link
---   + Fix recall + LiveProfessor-inspired panels
+--   + Restore Extensions → ReaProfessor shortcut (flat item; ReaPack/SWS stay top-level)
+--   + In-window ← Back navigation between pages
+--   + HiDPI / Retina gfx scaling (crisp on M3 Mac)
+--   + LP2 cue list / Navigator / Live Mode
 -- @about
 --   Live-oriented REAPER toolkit inspired by LiveProfessor 2.
---   Run Actions → Show action list → ReaProfessor.
---   Does not modify the Extensions menu (keeps ReaPack/SWS top-level).
+--   Open via Extensions → ReaProfessor or Actions → ReaProfessor.
+--   Flat Extensions item keeps ReaPack/SWS top-level (no submenu nesting).

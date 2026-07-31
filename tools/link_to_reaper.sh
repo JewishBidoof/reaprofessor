@@ -25,8 +25,9 @@ link_path "$REPO_ROOT/resources/osc/ReaProfessor.ReaperOSC" "$RESOURCE/OSC/ReaPr
 echo "REAPER resource: $RESOURCE"
 echo
 echo "Next steps in REAPER:"
-echo "  1) Actions → Show action list → Load → Scripts/ReaProfessor/ReaProfessor.lua"
-echo "  2) Run ReaProfessor (Actions list — Extensions menu is not modified)"
-echo "  3) If an older build nested your Extensions items: hub → Restore Extensions menu → Quit/reopen"
+echo "  1) Quit/reopen once if prompted so Extensions → ReaProfessor appears"
+echo "  2) Open Extensions → ReaProfessor (or Actions → ReaProfessor)"
+echo "  3) Use ← Back inside panels to return to the hub"
 echo "Optional: Preferences → Control/OSC/web → pattern config ReaProfessor."
+echo "If Extensions ever nest ReaPack/SWS: hub → Remove Extensions shortcut → Quit/reopen."
 

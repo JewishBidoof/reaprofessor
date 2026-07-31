@@ -1,5 +1,5 @@
 -- @description ReaProfessor
--- @version 0.3.9
+-- @version 0.4.0
 -- @author JewishBidoof
 -- @about Live plugin host toolkit for REAPER (cue lists, snapshots, 1:1 channels, custom MIDI/OSC).
 -- @noindex
@@ -12,23 +12,27 @@ package.path = script_dir .. "lib/?.lua;" .. alt .. "lib/?.lua;" .. res .. "lib/
 
 local UI = require("ui")
 local Menu = require("menu")
+local Nav = require("nav")
+
+local THIS = script_dir .. "ReaProfessor.lua"
+if not reaper.file_exists(THIS) then THIS = alt .. "ReaProfessor.lua" end
+Nav.set_current(THIS)
+-- Opening the hub clears the back stack (home).
+Nav.clear()
+Nav.set_current(THIS)
 
 local running = true
-local pending_open = nil
 local status = ""
 
 UI.init("ReaProfessor", 480, 640, 0)
 
 local function open_script(rel)
-  local path = script_dir .. rel
-  if not reaper.file_exists(path) then
-    path = alt .. rel
-  end
-  if not reaper.file_exists(path) then
+  local path = Nav.resolve(rel, script_dir)
+  if not path or not reaper.file_exists(path) then
     reaper.ShowMessageBox("Missing script:\n" .. tostring(rel), "ReaProfessor", 0)
     return
   end
-  pending_open = path
+  Nav.go(path)
   running = false
 end
 
@@ -43,16 +47,21 @@ local buttons = {
   { id = "ctrl",  label = "Control Service",       file = "control_panel.lua" },
 }
 
-local function restore_menu()
-  local hub = script_dir .. "ReaProfessor.lua"
-  if not reaper.file_exists(hub) then hub = alt .. "ReaProfessor.lua" end
+local function install_menu()
+  local hub = THIS
   local ok, msg = Menu.install(hub)
   status = tostring(msg)
   reaper.ShowMessageBox(tostring(msg), "ReaProfessor", 0)
 end
 
+local function remove_menu_entry()
+  local ok, _, msg = Menu.restore_extensions_menu()
+  status = tostring(msg)
+  reaper.ShowMessageBox(tostring(msg), "ReaProfessor", 0)
+end
+
 local function draw()
-  local w, h = gfx.w, gfx.h
+  local w, h = UI.dims()
   UI.fill_rect(0, 0, w, h, UI.colors.bg)
   UI.fill_rect(0, 0, w, 72, UI.colors.header)
   UI.hline(0, 72, w, UI.colors.border)
@@ -71,8 +80,12 @@ local function draw()
     y = y + 46
   end
 
-  if UI.button("menu", 24, y + 8, bw, 34, "Restore Extensions menu", { bg = UI.colors.panel2 }) then
-    restore_menu()
+  if UI.button("menu", 24, y + 8, bw, 34, "Install Extensions shortcut", { bg = UI.colors.go, fg = UI.colors.go_fg }) then
+    install_menu()
+  end
+  y = y + 48
+  if UI.button("unmenu", 24, y, bw, 28, "Remove Extensions shortcut", { bg = UI.colors.panel2 }) then
+    remove_menu_entry()
   end
 
   gfx.setfont(3)
@@ -84,14 +97,7 @@ end
 
 local function loop()
   if not running then
-    gfx.quit()
-    if pending_open then
-      local path = pending_open
-      pending_open = nil
-      reaper.defer(function()
-        dofile(path)
-      end)
-    end
+    UI.quit_and_nav(Nav)
     return
   end
   draw()
@@ -100,10 +106,8 @@ local function loop()
 end
 
 do
-  local hub = script_dir .. "ReaProfessor.lua"
-  if not reaper.file_exists(hub) then hub = alt .. "ReaProfessor.lua" end
-  local ok, msg = Menu.ensure(hub)
-  status = ok and "Actions registered · Extensions left stock" or tostring(msg)
+  local ok, msg = Menu.ensure(THIS)
+  status = ok and "Actions + Extensions shortcut ready (quit/reopen if new)" or tostring(msg)
 end
 
 loop()

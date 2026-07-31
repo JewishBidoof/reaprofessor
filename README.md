@@ -67,13 +67,13 @@ tests/                  Automated REAPER script checks
 
 ## Status
 
-Active development (v0.3.9):
+Active development (v0.4.0):
 
-- LiveProfessor 2–style Cue List: nested actions, tool palette (Q/S/M), inspector (fade/pre/post), GO NEXT
-- Navigator plugin overview; Live Mode perform surface (next/on-deck + chains)
-- Global Snapshots: Options → fire cue on recall, color tags, update/recall toolbar
-- Snapshot recall stores full FXCHAIN; params auto-rebuilds; `+`/S tools capture full
-- Actions-list entry only — does **not** customize Extensions
+- Extensions → ReaProfessor shortcut restored (flat item so ReaPack/SWS stay top-level)
+- ← Back navigation between hub and pages (no close/reopen)
+- HiDPI / Retina gfx scaling for crisp UI on M3 Mac
+- LiveProfessor 2–style Cue List, Navigator, Live Mode, Global Snapshots
+- Snapshot recall stores full FXCHAIN; params auto-rebuilds
 - 1:1 channel creator, custom MIDI/OSC mapping
 - ReaPack metapackage under `Live/ReaProfessor.lua` (auto-publish workflow remains disabled)
 

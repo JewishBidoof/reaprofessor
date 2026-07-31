@@ -10,6 +10,14 @@ local script_dir = (src:sub(1, 1) == "@" and src:sub(2):match("(.+[\\/])")) or r
 package.path = script_dir .. "lib/?.lua;" .. res .. "lib/?.lua;" .. package.path
 
 local UI = require("ui")
+local Nav = require("nav")
+
+local THIS = script_dir .. "navigator.lua"
+if not reaper.file_exists(THIS) then
+  local altp = reaper.GetResourcePath() .. "/Scripts/Live/ReaProfessor/navigator.lua"
+  if reaper.file_exists(altp) then THIS = altp end
+end
+Nav.set_current(THIS)
 local Config = require("config")
 
 local running = true
@@ -44,8 +52,10 @@ local function collect()
 end
 
 local function draw()
-  local w, h = gfx.w, gfx.h
+  local w, h = UI.dims()
+  local mx, my, mcap = UI.mouse()
   UI.fill_rect(0, 0, w, h, UI.colors.bg)
+  if Nav.back_button(UI, 8, 10) then running = false end
   UI.header_bar(w, "Navigator", "All plugins by chain  ·  click name = show  ·  power = bypass")
 
   local folders = collect()
@@ -69,8 +79,8 @@ local function draw()
         UI.label(w - 60, y + 5, "MUTE", UI.colors.danger)
       end
     end
-    local fhit = gfx.mouse_y >= y and gfx.mouse_y < y + row_h and gfx.mouse_x >= 8 and gfx.mouse_x <= w - 8
-    if fhit and gfx.mouse_cap & 1 == 1 and not UI._nav_down then
+    local fhit = my >= y and my < y + row_h and mx >= 8 and mx <= w - 8
+    if fhit and mcap & 1 == 1 and not UI._nav_down then
       selected = { chain = ci, fx = -1 }
       reaper.SetOnlyTrackSelected(folder.track)
     end
@@ -91,12 +101,12 @@ local function draw()
           UI.label(w - 50, y + 5, "GUI", UI.colors.accent)
         end
 
-        local phit = gfx.mouse_y >= y and gfx.mouse_y < y + row_h - 2 and gfx.mouse_x >= 20 and gfx.mouse_x <= w - 8
-        if phit and gfx.mouse_cap & 1 == 1 and not UI._nav_down then
+        local phit = my >= y and my < y + row_h - 2 and mx >= 20 and mx <= w - 8
+        if phit and mcap & 1 == 1 and not UI._nav_down then
           selected = { chain = ci, fx = fi }
           reaper.SetOnlyTrackSelected(folder.track)
           -- Power click
-          if gfx.mouse_x >= 28 and gfx.mouse_x <= 42 then
+          if mx >= 28 and mx <= 42 then
             if Config.actions_enabled() then
               reaper.TrackFX_SetEnabled(folder.track, plug.index, not plug.enabled)
             end
@@ -111,7 +121,7 @@ local function draw()
     y = y + 6
   end
 
-  if gfx.mouse_cap & 1 == 0 then UI._nav_down = false else UI._nav_down = true end
+  if mcap & 1 == 0 then UI._nav_down = false else UI._nav_down = true end
 
   -- Scroll via mouse wheel
   local wheel = gfx.mouse_wheel or 0
@@ -128,14 +138,16 @@ local function draw()
   UI.label(12, h - 24, string.format("%d chains · %d plugins", #folders, nplug), UI.colors.muted)
 
   local ch = gfx.getchar()
-  if ch == 27 or ch < 0 then running = false
+  if ch == 27 or ch < 0 then
+    if Nav.can_back() then Nav.back() end
+    running = false
   elseif ch == 30064 then scroll = math.max(0, scroll - 40) -- up
   elseif ch == 1685026670 then scroll = scroll + 40 -- down
   end
 end
 
 local function loop()
-  if not running then gfx.quit(); return end
+  if not running then UI.quit_and_nav(Nav); return end
   draw()
   gfx.update()
   reaper.defer(loop)

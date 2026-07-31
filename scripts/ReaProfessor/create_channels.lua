@@ -10,6 +10,14 @@ local script_dir = (src:sub(1, 1) == "@" and src:sub(2):match("(.+[\\/])")) or r
 package.path = script_dir .. "lib/?.lua;" .. res .. "lib/?.lua;" .. package.path
 
 local UI = require("ui")
+local Nav = require("nav")
+
+local THIS = script_dir .. "create_channels.lua"
+if not reaper.file_exists(THIS) then
+  local altp = reaper.GetResourcePath() .. "/Scripts/Live/ReaProfessor/create_channels.lua"
+  if reaper.file_exists(altp) then THIS = altp end
+end
+Nav.set_current(THIS)
 local Data = require("data")
 local Routing = require("routing")
 local Config = require("config")
@@ -42,10 +50,12 @@ local function create()
 end
 
 local function draw()
-  local w, h = gfx.w, gfx.h
+  local w, h = UI.dims()
+  local mx, my, mcap = UI.mouse()
   UI.fill_rect(0, 0, w, h, UI.colors.bg)
+  if Nav.back_button(UI, 8, 10) then running = false end
   gfx.setfont(2)
-  UI.label(16, 14, "CREATE CHANNELS", UI.colors.accent)
+  UI.label(96, 14, "CREATE CHANNELS", UI.colors.accent)
   gfx.setfont(3)
   UI.label(16, 48, "1:1 mono hardware routing for live multitrack", UI.colors.muted)
 
@@ -89,13 +99,15 @@ local function draw()
   UI.label(24, h - 20, status, UI.colors.muted)
 
   local ch = gfx.getchar()
-  if ch == 27 or ch < 0 then running = false
+  if ch == 27 or ch < 0 then
+    if Nav.can_back() then Nav.back() end
+    running = false
   elseif ch == 13 then create()
   end
 end
 
 local function loop()
-  if not running then gfx.quit(); return end
+  if not running then UI.quit_and_nav(Nav); return end
   draw()
   gfx.update()
   reaper.defer(loop)

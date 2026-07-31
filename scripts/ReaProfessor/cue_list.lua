@@ -11,6 +11,14 @@ local alt = reaper.GetResourcePath() .. "/Scripts/Live/ReaProfessor/"
 package.path = script_dir .. "lib/?.lua;" .. alt .. "lib/?.lua;" .. res .. "lib/?.lua;" .. package.path
 
 local UI = require("ui")
+local Nav = require("nav")
+
+local THIS = script_dir .. "cue_list.lua"
+if not reaper.file_exists(THIS) then
+  local altp = reaper.GetResourcePath() .. "/Scripts/Live/ReaProfessor/cue_list.lua"
+  if reaper.file_exists(altp) then THIS = altp end
+end
+Nav.set_current(THIS)
 local Data = require("data")
 local Commands = require("commands")
 local Config = require("config")
@@ -207,15 +215,17 @@ local ACT_H = 26
 local TOOL = 28
 
 local function draw()
-  local w, h = gfx.w, gfx.h
+  local w, h = UI.dims()
+  local mx, my, mcap = UI.mouse()
   UI.fill_rect(0, 0, w, h, UI.colors.bg)
+  if Nav.back_button(UI, 8, 10) then running = false end
 
   -- Title
   UI.fill_rect(0, 0, w, 36, UI.colors.header)
   gfx.setfont(2)
-  UI.label(12, 8, "Cue List", UI.colors.text)
+  UI.label(96, 8, "Cue List", UI.colors.text)
   gfx.setfont(3)
-  UI.label(110, 12, "tools add actions into cues  ·  Space = GO NEXT", UI.colors.muted)
+  UI.label(200, 12, "tools add actions into cues  ·  Space = GO NEXT", UI.colors.muted)
 
   -- Tool palette (LP style)
   local ty = 42
@@ -277,9 +287,9 @@ local function draw()
     local tri = cue.expanded and "▼" or "▶"
     gfx.setfont(3)
     UI.label(16, y + 6, tri, UI.colors.muted)
-    local tri_hit = gfx.mouse_x >= 14 and gfx.mouse_x <= 34
-                 and gfx.mouse_y >= y and gfx.mouse_y <= y + CUE_H
-    local down = gfx.mouse_cap & 1 == 1
+    local tri_hit = mx >= 14 and mx <= 34
+                 and my >= y and my <= y + CUE_H
+    local down = mcap & 1 == 1
     if tri_hit and down and not UI._cue_down then
       cue.expanded = not cue.expanded
       persist()
@@ -294,8 +304,8 @@ local function draw()
     UI.label(w - 130, y + 7, Data.format_ms(cue.pre_wait_ms), UI.colors.muted)
     UI.label(w - 70, y + 7, Data.format_ms(cue.post_wait_ms), UI.colors.muted)
 
-    local hit = gfx.mouse_x >= 36 and gfx.mouse_x <= w - 12
-            and gfx.mouse_y >= y and gfx.mouse_y <= y + CUE_H - 2
+    local hit = mx >= 36 and mx <= w - 12
+            and my >= y and my <= y + CUE_H - 2
     if hit and down and not UI._cue_down then
       if selected == i and selected_action == 0 and UI._last_cue_i == i
          and (reaper.time_precise() - (UI._last_cue_t or 0) < 0.35) then
@@ -330,8 +340,8 @@ local function draw()
         local missing = act.kind == "snapshot" and not snapshot_exists(act.snapshot or act.label)
         UI.label(56, y + 5, label .. (missing and "  !missing" or ""), missing and UI.colors.danger or UI.colors.text)
 
-        local ahit = gfx.mouse_x >= 28 and gfx.mouse_x <= w - 12
-                 and gfx.mouse_y >= y and gfx.mouse_y <= y + ACT_H - 2
+        local ahit = mx >= 28 and mx <= w - 12
+                 and my >= y and my <= y + ACT_H - 2
         if ahit and down and not UI._cue_down then
           selected = i
           selected_action = ai
@@ -343,7 +353,7 @@ local function draw()
     end
   end
 
-  if gfx.mouse_cap & 1 == 0 then UI._cue_down = false else UI._cue_down = true end
+  if mcap & 1 == 0 then UI._cue_down = false else UI._cue_down = true end
 
   -- Inspector (LP bottom properties)
   local iy = list_top + list_h + 4
@@ -409,7 +419,9 @@ local function draw()
   UI.label(430, by + 28, status ~= "" and status or string.format("%d cues", #cues), UI.colors.muted)
 
   local ch = gfx.getchar()
-  if ch == 27 or ch < 0 then running = false
+  if ch == 27 or ch < 0 then
+    if Nav.can_back() then Nav.back() end
+    running = false
   elseif ch == 32 then go_next()
   elseif ch == 8 then go_back()
   elseif ch == ("q"):byte() then add_empty_cue()
@@ -418,7 +430,7 @@ local function draw()
 end
 
 local function loop()
-  if not running then gfx.quit(); return end
+  if not running then UI.quit_and_nav(Nav); return end
   draw()
   gfx.update()
   reaper.defer(loop)
