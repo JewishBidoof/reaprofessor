@@ -1,5 +1,5 @@
 -- @description ReaProfessor action registration (native Extensions menu)
--- @version 0.4.2
+-- @version 0.4.3
 -- @author JewishBidoof
 -- @noindex
 --

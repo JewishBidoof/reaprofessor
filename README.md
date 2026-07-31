@@ -70,7 +70,7 @@ tests/                  Automated REAPER script checks
 
 ## Status
 
-Active development (v0.4.2):
+Active development (v0.4.3):
 
 - **Extensions → ReaProfessor** via native `hookcustommenu` (no `reaper-menu.ini` hijack)
 - Older 0.4.0/0.4.1 menu.ini customizations are cleared on hub open / startup
