@@ -1,5 +1,5 @@
 -- @description ReaProfessor ExtState data helpers
--- @version 0.3.9
+-- @version 0.5.0
 -- @author JewishBidoof
 -- @noindex
 
@@ -160,68 +160,90 @@ function Data.save_cues(cues)
   proj_ext_set(CUES_KEY, Data.encode(cues))
 end
 
---- Normalize a cue to LP2 shape: container with nested actions + timing fields.
--- Legacy flat cues (kind=snapshot/action + payload) are upgraded in place.
+--- Normalize a cue.
+-- Simplified model: each cue recalls one processing snapshot (+ optional MIDI/OSC).
+-- kind = "cue" (recall) | "dummy" (MIDI/OSC only). Legacy nested actions are migrated.
 function Data.normalize_cue(cue)
   if type(cue) ~= "table" then
-    cue = { name = "Cue", actions = {} }
+    cue = { name = "Cue" }
   end
-  if type(cue.actions) ~= "table" then
-    cue.actions = {}
-    local key = cue.payload and cue.payload.snapshot
-    if cue.kind == "snapshot" or (key and key ~= "") or (cue.kind == nil and cue.name) then
-      local snap_name = key
-      if not snap_name or snap_name == "" then snap_name = cue.name end
-      if snap_name and snap_name ~= "" then
-        cue.actions[#cue.actions + 1] = {
-          kind = "snapshot",
-          snapshot = snap_name,
-          label = snap_name,
-        }
+  cue.id = cue.id or Data.new_id("cue")
+  cue.name = cue.name or "Cue"
+
+  -- Migrate legacy nested-action cues → snapshot_name + midi/osc fields.
+  if (not cue.snapshot_name or cue.snapshot_name == "") and type(cue.actions) == "table" then
+    for _, a in ipairs(cue.actions) do
+      if a.kind == "snapshot" then
+        cue.snapshot_name = a.snapshot or a.label
+        break
       end
     end
-    if cue.kind == "action" and cue.payload and cue.payload.command_id then
-      cue.actions[#cue.actions + 1] = {
-        kind = "action",
-        command_id = cue.payload.command_id,
-        label = "Action " .. tostring(cue.payload.command_id),
-      }
+    if not cue.snapshot_name and cue.payload and cue.payload.snapshot then
+      cue.snapshot_name = cue.payload.snapshot
+    end
+    if not cue.midi then
+      for _, a in ipairs(cue.actions) do
+        if a.kind == "midi" then
+          cue.midi = {
+            type = a.type or "note_on",
+            channel = a.channel,
+            note = a.note,
+            cc = a.cc,
+            velocity = a.velocity or 100,
+          }
+          break
+        end
+      end
     end
   end
-  if cue.fire_all == nil then cue.fire_all = true end
-  if cue.expanded == nil then cue.expanded = true end
-  if cue.fade_ms == nil then cue.fade_ms = 0 end
-  if cue.pre_wait_ms == nil then cue.pre_wait_ms = 0 end
-  if cue.post_wait_ms == nil then cue.post_wait_ms = 0 end
-  if cue.trigger_midi == nil then cue.trigger_midi = false end
-  -- Keep legacy fields in sync with first snapshot action for older callers
-  local first_snap = nil
-  for _, a in ipairs(cue.actions) do
-    if a.kind == "snapshot" then first_snap = a break end
+  if cue.payload and cue.payload.snapshot and (not cue.snapshot_name or cue.snapshot_name == "") then
+    cue.snapshot_name = cue.payload.snapshot
   end
-  if first_snap then
-    cue.kind = cue.kind or "snapshot"
-    cue.payload = cue.payload or {}
-    cue.payload.snapshot = first_snap.snapshot or first_snap.label
-  elseif not cue.kind or cue.kind == "" then
-    cue.kind = "group"
+
+  if cue.kind == "group" or cue.kind == "snapshot" or cue.kind == "action" or not cue.kind or cue.kind == "" then
+    cue.kind = "cue"
   end
+  if cue.kind ~= "dummy" then cue.kind = "cue" end
+
+  cue.osc = cue.osc or "" -- empty → default {parent}/{cue#}
+  cue.send_on_fire = cue.send_on_fire and true or false
+  if type(cue.midi) ~= "table" then cue.midi = nil end
   return cue
 end
 
---- Create an empty LP2-style cue container.
-function Data.new_cue(name)
+--- Create a cue. Capture snapshot separately via Data.capture_snapshot + assign snapshot_name.
+function Data.new_cue(name, opts)
+  opts = opts or {}
   return Data.normalize_cue({
     id = Data.new_id("cue"),
     name = name or "Cue",
-    kind = "group",
-    actions = {},
-    fire_all = true,
-    expanded = true,
-    fade_ms = 0,
-    pre_wait_ms = 0,
-    post_wait_ms = 0,
+    kind = opts.kind or "cue",
+    snapshot_name = opts.snapshot_name or "",
+    osc = opts.osc or "",
+    midi = opts.midi,
+    send_on_fire = opts.send_on_fire and true or false,
   })
+end
+
+--- Default OSC path for cue index (1-based): {parent}/{n}
+function Data.default_cue_osc(meta, index)
+  meta = meta or Data.load_meta()
+  local parent = tostring(meta.osc_parent or "/ReaProfessor"):gsub("/+$", "")
+  if parent == "" then parent = "/ReaProfessor" end
+  return string.format("%s/%d", parent, tonumber(index) or 1)
+end
+
+function Data.cue_osc_path(cue, index, meta)
+  cue = Data.normalize_cue(cue or {})
+  if cue.osc and cue.osc ~= "" then
+    local path = tostring(cue.osc)
+    if path:sub(1, 1) ~= "/" then
+      local parent = tostring((meta or Data.load_meta()).osc_parent or "/ReaProfessor"):gsub("/+$", "")
+      path = parent .. "/" .. path:gsub("^/+", "")
+    end
+    return path
+  end
+  return Data.default_cue_osc(meta, index)
 end
 
 function Data.format_ms(ms)
@@ -274,18 +296,32 @@ function Data.load_meta()
   local raw = proj_ext_get(META_KEY)
   local meta = Data.decode(raw)
   if type(meta) ~= "table" then
-    meta = {
-      cue_index = 1,
-      live_mode = false,
-      version = "0.3.9",
-      snapshot_mode = "full",
-      channel_mode = "same_strip",
-      selected_only = false,
-      last_snapshot = "",
-    }
+    meta = {}
   end
+  if meta.cue_index == nil then meta.cue_index = 1 end
+  if meta.live_mode == nil then meta.live_mode = false end
+  if not meta.version then meta.version = "0.5.0" end
   if not meta.snapshot_mode then meta.snapshot_mode = "full" end
   if not meta.channel_mode then meta.channel_mode = "same_strip" end
+  if meta.selected_only == nil then meta.selected_only = false end
+  if not meta.last_snapshot then meta.last_snapshot = "" end
+  -- OSC parent prefix; cue default path = {parent}/{cue number}
+  if not meta.osc_parent or meta.osc_parent == "" then
+    meta.osc_parent = "/ReaProfessor"
+  end
+  -- Global MIDI listen channel: 0 = omni, 1–16 = filter
+  meta.midi_channel = tonumber(meta.midi_channel) or 0
+  if meta.midi_channel < 0 then meta.midi_channel = 0 end
+  if meta.midi_channel > 16 then meta.midi_channel = 16 end
+  if type(meta.transport) ~= "table" then meta.transport = {} end
+  for _, key in ipairs({ "go", "back", "fire" }) do
+    if type(meta.transport[key]) ~= "table" then
+      meta.transport[key] = { midi = nil, osc = "" }
+    else
+      meta.transport[key].osc = meta.transport[key].osc or ""
+    end
+  end
+  if meta.edit_mode == nil then meta.edit_mode = false end
   return meta
 end
 
@@ -470,8 +506,79 @@ local function iter_snapshot_tracks(selected_only)
   return targets
 end
 
+local function track_guid(tr)
+  if not tr then return nil end
+  return reaper.GetTrackGUID(tr)
+end
+
+--- Capture track→track sends (sidechain / MIDI routing). Does not touch HW outs or record.
+local function capture_sends(tr)
+  local sends = {}
+  local n = reaper.GetTrackNumSends(tr, 0) or 0
+  for i = 0, n - 1 do
+    local dest = nil
+    if reaper.GetTrackSendInfo_Value then
+      dest = reaper.GetTrackSendInfo_Value(tr, 0, i, "P_DESTTRACK")
+    end
+    if (not dest or dest == 0) and reaper.BR_GetMediaTrackSendInfo_Track then
+      dest = reaper.BR_GetMediaTrackSendInfo_Track(tr, 0, i, false)
+    end
+    local dest_guid = track_guid(dest)
+    if dest_guid then
+      sends[#sends + 1] = {
+        dest_guid = dest_guid,
+        vol = reaper.GetTrackSendInfo_Value(tr, 0, i, "D_VOL") or 1,
+        pan = reaper.GetTrackSendInfo_Value(tr, 0, i, "D_PAN") or 0,
+        mute = (reaper.GetTrackSendInfo_Value(tr, 0, i, "B_MUTE") or 0) > 0,
+        mode = reaper.GetTrackSendInfo_Value(tr, 0, i, "I_SENDMODE") or 0,
+        src_chan = reaper.GetTrackSendInfo_Value(tr, 0, i, "I_SRCCHAN") or 0,
+        dst_chan = reaper.GetTrackSendInfo_Value(tr, 0, i, "I_DSTCHAN") or 0,
+        midiflags = reaper.GetTrackSendInfo_Value(tr, 0, i, "I_MIDIFLAGS") or 0,
+      }
+    end
+  end
+  return sends
+end
+
+local function find_track_by_guid(guid)
+  if not guid or guid == "" then return nil end
+  if reaper.BR_GetMediaTrackByGUID then
+    local tr = reaper.BR_GetMediaTrackByGUID(0, guid)
+    if tr then return tr end
+  end
+  for i = 0, reaper.CountTracks(0) - 1 do
+    local tr = reaper.GetTrack(0, i)
+    if reaper.GetTrackGUID(tr) == guid then return tr end
+  end
+  return nil
+end
+
+local function recall_sends(tr, sends)
+  if type(sends) ~= "table" then return end
+  -- Remove existing track sends, then recreate from snapshot.
+  for i = (reaper.GetTrackNumSends(tr, 0) or 0) - 1, 0, -1 do
+    reaper.RemoveTrackSend(tr, 0, i)
+  end
+  for _, s in ipairs(sends) do
+    local dest = find_track_by_guid(s.dest_guid)
+    if dest and reaper.CreateTrackSend then
+      local idx = reaper.CreateTrackSend(tr, dest)
+      if idx >= 0 then
+        if s.vol ~= nil then reaper.SetTrackSendInfo_Value(tr, 0, idx, "D_VOL", s.vol) end
+        if s.pan ~= nil then reaper.SetTrackSendInfo_Value(tr, 0, idx, "D_PAN", s.pan) end
+        if s.mute ~= nil then reaper.SetTrackSendInfo_Value(tr, 0, idx, "B_MUTE", s.mute and 1 or 0) end
+        if s.mode ~= nil then reaper.SetTrackSendInfo_Value(tr, 0, idx, "I_SENDMODE", s.mode) end
+        if s.src_chan ~= nil then reaper.SetTrackSendInfo_Value(tr, 0, idx, "I_SRCCHAN", s.src_chan) end
+        if s.dst_chan ~= nil then reaper.SetTrackSendInfo_Value(tr, 0, idx, "I_DSTCHAN", s.dst_chan) end
+        if s.midiflags ~= nil then reaper.SetTrackSendInfo_Value(tr, 0, idx, "I_MIDIFLAGS", s.midiflags) end
+      end
+    end
+  end
+end
+
 --- Capture snapshot.
--- Always stores FXCHAIN + normalized params. `mode` is the preferred recall filter.
+-- Always stores FXCHAIN + normalized params + track sends (sidechain/MIDI routing).
+-- Does not capture record-arm / input / items. `mode` is the preferred recall filter.
 -- @param name string
 -- @param opts { mode="bypass"|"params"|"full", selected_only=bool }
 function Data.capture_snapshot(name, opts)
@@ -505,6 +612,7 @@ function Data.capture_snapshot(name, opts)
       mute = reaper.GetMediaTrackInfo_Value(tr, "B_MUTE") > 0,
       solo = reaper.GetMediaTrackInfo_Value(tr, "I_SOLO") > 0,
       fx = fx_list,
+      sends = capture_sends(tr),
     }
     -- Always store exact FXCHAIN so recall can rebuild even if filter is params/bypass.
     local ok, chunk = reaper.GetTrackStateChunk(tr, "", false)
@@ -754,6 +862,8 @@ function Data.recall_snapshot(snap, opts)
     else
       recall_track_bypass_or_params(tr, src, mode)
     end
+    -- Sidechain / MIDI sends after FX so routing matches the snap without touching record.
+    recall_sends(tr, src.sends)
   end
 
   for _, src in ipairs(snap.tracks) do

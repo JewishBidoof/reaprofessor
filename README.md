@@ -70,16 +70,16 @@ tests/                  Automated REAPER script checks
 
 ## Status
 
-Active development (v0.4.6):
+Active development (v0.5.0):
 
-- **Extensions → ReaProfessor** via native `hookcustommenu` (no `reaper-menu.ini` hijack)
-- Older 0.4.0/0.4.1 menu.ini customizations are cleared on hub open / startup
-- ← Back navigation between hub and pages
-- HiDPI / Retina gfx scaling for crisp UI on M3 Mac
-- LiveProfessor 2–style Cue List, Navigator, Live Mode, Global Snapshots
-- Snapshot recall stores full FXCHAIN; params auto-rebuilds
-- 1:1 channel creator, custom MIDI/OSC mapping
-- ReaPack metapackage under `Live/ReaProfessor.lua` (auto-publish workflow remains disabled)
+- **Cue List** is the product: each cue recalls a full FX + track-send snapshot
+- **Go / Back / Fire Selected**, edit mode (reorder/delete), Create Channels helper
+- Parent OSC prefix; default cue path `{parent}/{cue#}`; per-cue MIDI/OSC; transport bindings
+- Global MIDI channel filter (Omni or 1–16); dummy cues (MIDI/OSC only)
+- Show data stored **in the project** (`.RPP` ProjExtState) — portable with the project file
+- Channel create clears master send (avoid feedback); recall does not touch record arm/input
+- **Extensions → ReaProfessor** via native `hookcustommenu`; HiDPI gfx
+- ReaPack metapackage under `Live/ReaProfessor.lua`
 
 ```bash
 ./tools/link_to_reaper.sh

@@ -1,5 +1,5 @@
 -- @description ReaProfessor
--- @version 0.4.6
+-- @version 0.5.0
 -- @author JewishBidoof
 -- @metapackage
 -- @provides
@@ -30,10 +30,10 @@
 --   [extension/darwin-arm64] ../dist/darwin-arm64/reaper_reaprofessor.dylib
 --   [extension/win64] ../dist/win64/reaper_reaprofessor64.dll
 -- @changelog
---   + Find hub script under Scripts/ (scan + ExtState); clearer missing-script errors
---   + Extensions via native hookcustommenu; deferred ReaScript launch
---   + ← Back navigation; HiDPI gfx; LP2 cue list / Navigator / Live Mode
+--   + Simplified: Cue List + Create Channels (cues recall FX/send snapshots)
+--   + Parent OSC, per-cue MIDI/OSC, Go/Back/Fire bindings, edit mode
+--   + Project ExtState storage; master send cleared on channel create
 -- @about
---   Live-oriented REAPER toolkit inspired by LiveProfessor 2.
+--   Live cue list for REAPER: each cue recalls FX + send snapshots.
 --   Open via Extensions → ReaProfessor or Actions → ReaProfessor.
 --   Extensions menu entry comes from reaper_reaprofessor (same API as ReaPack/SWS).

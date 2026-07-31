@@ -1,5 +1,5 @@
 -- @description ReaProfessor MIDI map + polling helpers
--- @version 0.3.0
+-- @version 0.5.0
 -- @author JewishBidoof
 -- @noindex
 
@@ -41,11 +41,18 @@ local function parse_message(msg)
   return nil
 end
 
-function MIDI.match(event, map)
+function MIDI.match(event, map, opts)
   if not event or type(map) ~= "table" then return nil, nil end
+  opts = opts or {}
+  -- global_channel: 0/nil = omni, 1–16 = require that channel unless bind overrides
+  local global_ch = tonumber(opts.global_channel) or 0
   for _, bind in ipairs(map) do
     if bind.enabled == false then goto continue end
-    if bind.channel and bind.channel ~= event.channel then goto continue end
+    local want_ch = tonumber(bind.channel)
+    if want_ch and want_ch > 0 and want_ch ~= event.channel then goto continue end
+    if (not want_ch or want_ch == 0) and global_ch > 0 and event.channel ~= global_ch then
+      goto continue
+    end
     if bind.type == "note_on" and event.type == "note_on" and bind.note == event.note then
       return bind.command, bind
     elseif bind.type == "cc" and event.type == "cc" and bind.cc == event.cc then
@@ -60,9 +67,11 @@ function MIDI.match(event, map)
 end
 
 --- Poll until timestamp regresses; return commands and newest ts.
-function MIDI.poll_commands_v2(map, last_ts)
+-- opts.global_channel: 0/nil = omni, 1–16 = filter
+function MIDI.poll_commands_v2(map, last_ts, opts)
   local cmds = {}
   local newest = last_ts or 0
+  opts = opts or {}
   if not reaper.MIDI_GetRecentInputEvent then return cmds, newest end
   if type(map) ~= "table" or #map == 0 then return cmds, newest end
   for i = 0, 63 do
@@ -78,7 +87,7 @@ function MIDI.poll_commands_v2(map, last_ts)
     if ts <= (last_ts or 0) then break end
     if ts > newest then newest = ts end
     local event = parse_message(msg)
-    local command, bind = MIDI.match(event, map)
+    local command, bind = MIDI.match(event, map, { global_channel = opts.global_channel })
     if command then
       cmds[#cmds + 1] = { command = command, arg = bind and bind.arg, bind = bind }
     end

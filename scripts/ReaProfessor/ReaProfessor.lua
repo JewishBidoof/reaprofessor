@@ -1,7 +1,7 @@
 -- @description ReaProfessor
--- @version 0.4.6
+-- @version 0.5.0
 -- @author JewishBidoof
--- @about Live plugin host toolkit for REAPER (cue lists, snapshots, 1:1 channels, custom MIDI/OSC).
+-- @about Live cue list: each cue recalls a full FX + send snapshot. Create Channels helper.
 -- @noindex
 
 local res = reaper.GetResourcePath() .. "/Scripts/ReaProfessor/"
@@ -17,14 +17,13 @@ local Nav = require("nav")
 local THIS = script_dir .. "ReaProfessor.lua"
 if not reaper.file_exists(THIS) then THIS = alt .. "ReaProfessor.lua" end
 Nav.set_current(THIS)
--- Opening the hub clears the back stack (home).
 Nav.clear()
 Nav.set_current(THIS)
 
 local running = true
 local status = ""
 
-UI.init("ReaProfessor", 480, 640, 0)
+UI.init("ReaProfessor", 480, 420, 0)
 
 local function open_script(rel)
   local path = Nav.resolve(rel, script_dir)
@@ -36,26 +35,8 @@ local function open_script(rel)
   running = false
 end
 
-local buttons = {
-  { id = "live",  label = "Live Mode (perform)",   file = "live_mode.lua" },
-  { id = "cues",  label = "Cue List",              file = "cue_list.lua" },
-  { id = "snaps", label = "Global Snapshots",      file = "snapshots.lua" },
-  { id = "nav",   label = "Navigator",             file = "navigator.lua" },
-  { id = "chains",label = "Chains",                file = "chain_rack.lua" },
-  { id = "ch",    label = "Create Channels (1:1)", file = "create_channels.lua" },
-  { id = "map",   label = "MIDI / OSC Mapping",    file = "mapping.lua" },
-  { id = "ctrl",  label = "Control Service",       file = "control_panel.lua" },
-}
-
 local function install_menu()
-  local hub = THIS
-  local ok, msg = Menu.install(hub)
-  status = tostring(msg)
-  reaper.ShowMessageBox(tostring(msg), "ReaProfessor", 0)
-end
-
-local function remove_menu_entry()
-  local ok, _, msg = Menu.restore_extensions_menu()
+  local ok, msg = Menu.install(THIS)
   status = tostring(msg)
   reaper.ShowMessageBox(tostring(msg), "ReaProfessor", 0)
 end
@@ -69,26 +50,24 @@ local function draw()
   gfx.setfont(2)
   UI.label(24, 16, "ReaProfessor", UI.colors.text)
   gfx.setfont(3)
-  UI.label(24, 44, "Live plugin hosting for REAPER", UI.colors.muted)
+  UI.label(24, 44, "Cue list · snapshot recall · channel setup", UI.colors.muted)
 
-  local y = 92
-  local bw, bh = w - 48, 40
-  for _, b in ipairs(buttons) do
-    if UI.button(b.id, 24, y, bw, bh, b.label, { bg = UI.colors.panel }) then
-      open_script(b.file)
-    end
-    y = y + 46
+  local y = 100
+  local bw = w - 48
+  if UI.go_button("cues", 24, y, bw, 52, "Cue List") then
+    open_script("cue_list.lua")
   end
-
-  if UI.button("menu", 24, y + 8, bw, 34, "Check Extensions / undo menu.ini hijack", { bg = UI.colors.go, fg = UI.colors.go_fg }) then
+  y = y + 68
+  if UI.button("ch", 24, y, bw, 44, "Create Channels (1:1)", { bg = UI.colors.panel }) then
+    open_script("create_channels.lua")
+  end
+  y = y + 64
+  if UI.button("menu", 24, y, bw, 32, "Check Extensions menu", { bg = UI.colors.panel2, font = 3 }) then
     install_menu()
-  end
-  y = y + 48
-  if UI.button("unmenu", 24, y, bw, 28, "Remove old Extensions menu.ini customization", { bg = UI.colors.panel2 }) then
-    remove_menu_entry()
   end
 
   gfx.setfont(3)
+  UI.label(24, h - 48, "Show data is stored in the project (.RPP ExtState).", UI.colors.muted)
   UI.label(24, h - 28, status, UI.colors.muted)
 
   local ch = gfx.getchar()
@@ -108,7 +87,7 @@ end
 do
   local ok, msg = Menu.ensure(THIS)
   if Menu.native_extension_loaded and Menu.native_extension_loaded() then
-    status = "Native Extensions entry OK (quit/reopen if menu.ini was cleaned)"
+    status = "Native Extensions entry OK"
   else
     status = ok and "Put reaper_reaprofessor in UserPlugins, then quit/reopen" or tostring(msg)
   end
