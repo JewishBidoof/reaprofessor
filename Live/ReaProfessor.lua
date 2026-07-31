@@ -28,6 +28,7 @@
 --   [data] ../resources/osc/ReaProfessor.ReaperOSC > ReaProfessor.ReaperOSC
 --   [extension/linux64] ../dist/linux64/reaper_reaprofessor-x86_64.so
 --   [extension/darwin-arm64] ../dist/darwin-arm64/reaper_reaprofessor.dylib
+--   [extension/win64] ../dist/win64/reaper_reaprofessor64.dll
 -- @changelog
 --   + Fix Extensions → ReaProfessor not opening the hub (menu uses script command; hookcommand2)
 --   + Extensions via native hookcustommenu (no reaper-menu.ini)
