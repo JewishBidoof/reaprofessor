@@ -1,5 +1,5 @@
 -- @description ReaProfessor OSC address map + ExtState bridge
--- @version 0.3.0
+-- @version 0.5.4
 -- @author JewishBidoof
 -- @noindex
 --
@@ -37,7 +37,9 @@ OSC.addresses = {
 }
 
 local QUEUE_SECTION = "ReaProfessor"
-local QUEUE_KEY = "osc_queue"
+local QUEUE_KEY = "osc_queue"       -- inbound only (external → ReaProfessor)
+local OUT_KEY = "osc_out"           -- last outbound path (ReaProfessor → external)
+local OUT_QUEUE_KEY = "osc_out_queue" -- outbound queue (never drained as input)
 
 function OSC.empty_map()
   return {}
@@ -75,6 +77,8 @@ function OSC.dispatch(path, args, handlers)
   return false
 end
 
+--- Enqueue an *inbound* OSC message (external control → ReaProfessor).
+-- Do NOT use this for messages we generate on cue fire — that causes a feedback loop.
 function OSC.enqueue(path, args)
   local raw = select(2, reaper.GetProjExtState(0, QUEUE_SECTION, QUEUE_KEY))
   local Data = require("data")
@@ -91,6 +95,30 @@ function OSC.drain_queue()
   reaper.SetProjExtState(0, QUEUE_SECTION, QUEUE_KEY, "")
   if type(queue) ~= "table" then return {} end
   return queue
+end
+
+function OSC.clear_inbound_queue()
+  reaper.SetProjExtState(0, QUEUE_SECTION, QUEUE_KEY, "")
+end
+
+--- Publish an *outbound* OSC path (cue fire → lighting desk / etc.).
+-- Never written to the inbound queue.
+function OSC.send_out(path, args)
+  if not path or path == "" then return false end
+  reaper.SetExtState(QUEUE_SECTION, OUT_KEY, tostring(path), false)
+  if args ~= nil then
+    local Data = require("data")
+    reaper.SetExtState(QUEUE_SECTION, "osc_out_args", Data.encode(args), false)
+  end
+  local Data = require("data")
+  local raw = select(2, reaper.GetProjExtState(0, QUEUE_SECTION, OUT_QUEUE_KEY))
+  local queue = Data.decode(raw)
+  if type(queue) ~= "table" then queue = {} end
+  queue[#queue + 1] = { path = path, args = args or {}, t = os.time() }
+  -- Keep outbound queue bounded
+  while #queue > 64 do table.remove(queue, 1) end
+  reaper.SetProjExtState(0, QUEUE_SECTION, OUT_QUEUE_KEY, Data.encode(queue))
+  return true
 end
 
 function OSC.poll_oneshot()

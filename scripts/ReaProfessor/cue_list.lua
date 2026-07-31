@@ -1,5 +1,5 @@
 -- @description ReaProfessor - Cue List
--- @version 0.5.3
+-- @version 0.5.4
 -- @author JewishBidoof
 -- @noindex
 -- @about Single-screen cue list: recall FX/send snapshots. Go / Back / Fire Selected.
@@ -32,10 +32,31 @@ local scroll = 0
 local midi_ts = 0
 local learn_target = nil -- "go"|"back"|"fire"|"cue"|nil
 local learn_ts = 0
+-- After we fire a cue, ignore its OSC path briefly so an echo cannot re-trigger it.
+local suppress_osc = {} -- path -> expire time (reaper.time_precise)
+
+-- Clear any inbound OSC left from an older feedback loop.
+OSC.clear_inbound_queue()
 
 local function set_status(msg)
   -- Footer only — never ShowConsoleMsg (opens/focuses the REAPER console).
   status = tostring(msg or "")
+end
+
+local function suppress_path(path, seconds)
+  if not path or path == "" then return end
+  suppress_osc[path] = reaper.time_precise() + (seconds or 0.75)
+end
+
+local function is_suppressed(path)
+  if not path then return false end
+  local until_t = suppress_osc[path]
+  if not until_t then return false end
+  if reaper.time_precise() >= until_t then
+    suppress_osc[path] = nil
+    return false
+  end
+  return true
 end
 
 local function persist()
@@ -143,24 +164,34 @@ end
 
 local function edit_cue_osc()
   local cue = cues[selected]
-  if not cue then return end
+  if not cue then
+    set_status("Select a cue first")
+    return
+  end
+  cue = Data.normalize_cue(cue)
   local cur = cue.osc or ""
   local def = Data.default_cue_osc(meta, selected)
   local ok, val = reaper.GetUserInputs(
-    "Cue OSC", 1,
-    "OSC (blank = " .. def .. "):,extrawidth=280",
+    string.format("Cue %d OSC  (%s)", selected, cue.name or ""),
+    1,
+    "Outgoing OSC (blank=default " .. def .. "):,extrawidth=300",
     cur
   )
   if ok then
     cue.osc = val or ""
+    cues[selected] = cue
     persist()
-    set_status("OSC → " .. Data.cue_osc_path(cue, selected, meta))
+    set_status("Cue " .. selected .. " OSC → " .. Data.cue_osc_path(cue, selected, meta))
   end
 end
 
 local function edit_cue_midi()
   local cue = cues[selected]
-  if not cue then return end
+  if not cue then
+    set_status("Select a cue first")
+    return
+  end
+  cue = Data.normalize_cue(cue)
   local m = cue.midi or {}
   local def = string.format("%s,%s,%s,%s",
     m.type or "note_on",
@@ -168,8 +199,9 @@ local function edit_cue_midi()
     tostring(m.velocity or 100),
     tostring(m.channel or 0))
   local ok, vals = reaper.GetUserInputs(
-    "Cue MIDI trigger", 4,
-    "Type (note_on/cc),Note or CC #,Velocity/Value,Channel (0=global)",
+    string.format("Cue %d MIDI  (%s)", selected, cue.name or ""),
+    4,
+    "Type (note_on/cc/none),Note or CC #,Velocity/Value,Channel (0=global)",
     def
   )
   if not ok then return end
@@ -186,8 +218,9 @@ local function edit_cue_midi()
       channel = tonumber(ch) or 0,
     }
   end
+  cues[selected] = cue
   persist()
-  set_status(cue.midi and "MIDI assigned" or "MIDI cleared")
+  set_status(cue.midi and ("Cue " .. selected .. " MIDI → " .. describe_midi(cue.midi)) or ("Cue " .. selected .. " MIDI cleared"))
 end
 
 local function edit_parent_osc()
@@ -223,18 +256,56 @@ local function describe_midi(m)
   return string.format("N%d%s", m.note or 0, (m.channel and m.channel > 0) and ("/ch" .. m.channel) or "")
 end
 
-local function edit_transport_binding(which)
+local function edit_transport_osc(which)
   local t = meta.transport[which] or { midi = nil, osc = "" }
-  local cur_osc = t.osc or ""
   local ok, val = reaper.GetUserInputs(
-    "Transport " .. which:upper(), 1,
-    "OSC path (blank=none). Then Learn MIDI or Cancel:,extrawidth=280",
-    cur_osc
+    which:upper() .. " OSC",
+    1,
+    "Incoming OSC path (blank=none):,extrawidth=280",
+    t.osc or ""
   )
   if not ok then return end
   t.osc = val or ""
   meta.transport[which] = t
   persist()
+  set_status(which:upper() .. " OSC → " .. ((t.osc ~= "") and t.osc or "(none)"))
+end
+
+local function edit_transport_midi(which)
+  local t = meta.transport[which] or { midi = nil, osc = "" }
+  local m = t.midi or {}
+  local def = string.format("%s,%s,%s,%s",
+    m.type or "note_on",
+    tostring(m.note or m.cc or 36),
+    tostring(m.velocity or 100),
+    tostring(m.channel or 0))
+  local ok, vals = reaper.GetUserInputs(
+    which:upper() .. " MIDI",
+    4,
+    "Type (note_on/cc/none),Note or CC #,Velocity/Value,Channel (0=global)",
+    def
+  )
+  if not ok then return end
+  local typ, num, vel, ch = vals:match("([^,]+),([^,]+),([^,]+),([^,]+)")
+  typ = (typ or "note_on"):match("^%s*(.-)%s*$")
+  if typ == "" or typ == "none" or typ == "-" then
+    t.midi = nil
+  else
+    t.midi = {
+      type = typ,
+      note = (typ == "cc") and nil or (tonumber(num) or 36),
+      cc = (typ == "cc") and (tonumber(num) or 1) or nil,
+      velocity = tonumber(vel) or 100,
+      channel = tonumber(ch) or 0,
+    }
+  end
+  meta.transport[which] = t
+  persist()
+  set_status(t.midi and (which:upper() .. " MIDI → " .. describe_midi(t.midi))
+    or (which:upper() .. " MIDI cleared"))
+end
+
+local function learn_transport_midi(which)
   learn_target = which
   learn_ts = midi_ts
   set_status("Learn MIDI for " .. which:upper() .. " (play a note/CC)…")
@@ -242,6 +313,8 @@ end
 
 local function go_next()
   if not Config.actions_enabled() then return Config.deny_action("Go") end
+  local idx = meta.cue_index or selected or 1
+  if cues[idx] then suppress_path(Data.cue_osc_path(cues[idx], idx, meta), 0.85) end
   local ok, msg = Commands.cue_go()
   refresh()
   set_status(msg or (ok and "GO" or "GO failed"))
@@ -249,6 +322,8 @@ end
 
 local function go_back()
   if not Config.actions_enabled() then return Config.deny_action("Back") end
+  local idx = math.max(1, (meta.cue_index or selected or 1) - 1)
+  if cues[idx] then suppress_path(Data.cue_osc_path(cues[idx], idx, meta), 0.85) end
   local ok, msg = Commands.cue_back()
   refresh()
   set_status(msg or (ok and "Back" or "Back failed"))
@@ -256,6 +331,10 @@ end
 
 local function fire_selected()
   if not Config.actions_enabled() then return Config.deny_action("Fire") end
+  local cue = cues[selected]
+  if cue then
+    suppress_path(Data.cue_osc_path(cue, selected, meta), 0.85)
+  end
   local ok, msg = Commands.cue_goto(selected)
   refresh()
   set_status(msg or (ok and "Fired" or "Fire failed"))
@@ -350,13 +429,14 @@ local function poll_midi()
     end
   end
 
-  -- OSC queue for transport + cue paths
+  -- Inbound OSC only (external). Outbound cue fires use OSC.send_out, not this queue.
   for _, item in ipairs(OSC.drain_queue()) do
     local path = item.path
-    if not path then goto continue end
-    for key, cmd in pairs({ go = true, back = true, fire = true }) do
+    if not path or is_suppressed(path) then goto continue end
+    for key, _ in pairs({ go = true, back = true, fire = true }) do
       local t = meta.transport[key]
       if t and t.osc and t.osc ~= "" and path == t.osc then
+        suppress_path(path, 0.85)
         if key == "go" then go_next()
         elseif key == "back" then go_back()
         else fire_selected() end
@@ -365,6 +445,7 @@ local function poll_midi()
     end
     for i, cue in ipairs(cues) do
       if path == Data.cue_osc_path(cue, i, meta) then
+        suppress_path(path, 0.85)
         selected = i
         fire_selected()
         break
@@ -413,29 +494,40 @@ local function draw()
     persist()
   end
 
-  -- Transport bindings
+  -- Transport bindings: separate OSC / MIDI / Learn per control
   y = 160
   gfx.setfont(3)
-  UI.label(16, y, "Go / Back / Fire bindings (click to set OSC, then learn MIDI)", UI.colors.muted)
-  y = 178
+  UI.label(16, y, "Go / Back / Fire bindings", UI.colors.muted)
+  y = 180
+  local col_w = (w - 48) / 3
+  local sub_w = math.floor((col_w - 8) / 3)
   for i, key in ipairs({ "go", "back", "fire" }) do
     local t = meta.transport[key] or {}
-    local label = string.format("%s  MIDI:%s  OSC:%s",
-      key:upper(),
-      describe_midi(t.midi),
-      (t.osc and t.osc ~= "") and t.osc or "—")
-    local x = 16 + (i - 1) * ((w - 40) / 3)
-    if UI.button("tr_" .. key, x, y, (w - 48) / 3, 26, label, { bg = UI.colors.panel2, font = 3 }) then
-      edit_transport_binding(key)
+    local x = 16 + (i - 1) * (col_w + 8)
+    local osc_txt = (t.osc and t.osc ~= "") and t.osc or "—"
+    UI.label(x, y, key:upper(), UI.colors.accent)
+    if UI.button("tr_osc_" .. key, x, y + 16, sub_w, 24,
+      "OSC: " .. osc_txt, { bg = UI.colors.panel2, font = 3 }) then
+      edit_transport_osc(key)
+    end
+    if UI.button("tr_midi_" .. key, x + sub_w + 4, y + 16, sub_w, 24,
+      "MIDI: " .. describe_midi(t.midi), { bg = UI.colors.panel2, font = 3 }) then
+      edit_transport_midi(key)
+    end
+    local learning = (learn_target == key)
+    if UI.button("tr_learn_" .. key, x + 2 * (sub_w + 4), y + 16, sub_w, 24,
+      learning and "Learning…" or "Learn",
+      { bg = learning and UI.colors.edit or UI.colors.panel2, font = 3 }) then
+      learn_transport_midi(key)
     end
   end
 
   -- Cue list
-  y = 216
+  y = 232
   UI.hline(16, y, w - 32, UI.colors.border)
-  y = 224
+  y = 240
   local list_top = y
-  local list_bottom = h - 120
+  local list_bottom = h - 148
   local row_h = 36
   local visible = math.max(1, math.floor((list_bottom - list_top) / row_h))
   if selected < scroll + 1 then scroll = selected - 1 end
@@ -454,6 +546,7 @@ local function draw()
     if UI.button("cue_" .. idx, 16, yy, w - 32, row_h - 2, "", { bg = bg }) then
       selected = idx
       persist()
+      set_status(string.format("Selected cue %d — edit Out OSC / Out MIDI below", idx))
     end
     gfx.setfont(1)
     local kind_tag = (cue.kind == "dummy") and "D" or tostring(idx)
@@ -475,9 +568,36 @@ local function draw()
     UI.label(24, list_top + 20, "No cues yet — Capture Cue to store the current FX/sends state.", UI.colors.muted)
   end
 
+  -- Selected-cue inspector (outgoing MIDI/OSC)
+  local sel = cues[selected] and Data.normalize_cue(cues[selected]) or nil
+  local iy = h - 140
+  UI.hline(16, iy - 6, w - 32, UI.colors.border)
+  gfx.setfont(3)
+  if sel then
+    local osc = Data.cue_osc_path(sel, selected, meta)
+    local kind = (sel.kind == "dummy") and "dummy (send only)" or "snapshot + optional send"
+    UI.label(16, iy, string.format("Selected #%d  %s  ·  %s", selected, sel.name or "", kind), UI.colors.muted)
+    if UI.button("cosc", 16, iy + 18, math.floor((w - 48) / 3), 28,
+      "Out OSC: " .. osc, { bg = UI.colors.panel2, font = 3 }) then
+      edit_cue_osc()
+    end
+    if UI.button("cmidi", 24 + math.floor((w - 48) / 3), iy + 18, math.floor((w - 48) / 3), 28,
+      "Out MIDI: " .. describe_midi(sel.midi), { bg = UI.colors.panel2, font = 3 }) then
+      edit_cue_midi()
+    end
+    if UI.button("learn", 32 + 2 * math.floor((w - 48) / 3), iy + 18, math.floor((w - 48) / 3), 28,
+      learn_target == "cue" and "Learning MIDI…" or "Learn MIDI",
+      { bg = learn_target == "cue" and UI.colors.edit or UI.colors.panel2, font = 3 }) then
+      learn_target = "cue"
+      learn_ts = midi_ts
+      set_status("Play a MIDI note/CC to assign to cue " .. selected)
+    end
+  else
+    UI.label(16, iy + 8, "Select a cue to edit its outgoing OSC / MIDI", UI.colors.muted)
+  end
+
   -- Footer actions
-  local fy = h - 104
-  UI.hline(16, fy - 8, w - 32, UI.colors.border)
+  local fy = h - 84
   local fw = math.floor((w - 56) / 4)
   if UI.button("add", 16, fy, fw, 32, "+ Capture Cue", { bg = UI.colors.tool_snap, fg = {0.05,0.08,0.05} }) then
     add_cue(false)
@@ -494,27 +614,16 @@ local function draw()
     create_channels_popup()
   end
 
-  fy = h - 64
   if edit_mode then
-    if UI.button("up", 16, fy, 56, 28, "↑", { bg = UI.colors.panel2 }) then move_selected(-1) end
-    if UI.button("dn", 80, fy, 56, 28, "↓", { bg = UI.colors.panel2 }) then move_selected(1) end
-    if UI.button("del", 144, fy, 72, 28, "Delete", { bg = UI.colors.danger }) then delete_selected() end
-    if UI.button("ren", 224, fy, 72, 28, "Rename", { bg = UI.colors.panel2 }) then rename_selected() end
-  end
-  if UI.button("cosc", w - 260, fy, 80, 28, "Cue OSC", { bg = UI.colors.panel2, font = 3 }) then
-    edit_cue_osc()
-  end
-  if UI.button("cmidi", w - 172, fy, 80, 28, "Cue MIDI", { bg = UI.colors.panel2, font = 3 }) then
-    edit_cue_midi()
-  end
-  if UI.button("learn", w - 84, fy, 68, 28, learn_target and "…" or "Learn", { bg = UI.colors.panel2, font = 3 }) then
-    learn_target = "cue"
-    learn_ts = midi_ts
-    set_status("Learn MIDI for selected cue…")
+    local ey = h - 48
+    if UI.button("up", 16, ey, 56, 22, "↑", { bg = UI.colors.panel2, font = 3 }) then move_selected(-1) end
+    if UI.button("dn", 80, ey, 56, 22, "↓", { bg = UI.colors.panel2, font = 3 }) then move_selected(1) end
+    if UI.button("del", 144, ey, 72, 22, "Delete", { bg = UI.colors.danger, font = 3 }) then delete_selected() end
+    if UI.button("ren", 224, ey, 72, 22, "Rename", { bg = UI.colors.panel2, font = 3 }) then rename_selected() end
   end
 
   gfx.setfont(3)
-  UI.label(16, h - 28, status, UI.colors.muted)
+  UI.label(16, h - 22, status, UI.colors.muted)
 
   local ch = gfx.getchar()
   if ch == 27 or ch < 0 then running = false end

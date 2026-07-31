@@ -1,5 +1,5 @@
 -- @description ReaProfessor
--- @version 0.5.3
+-- @version 0.5.4
 -- @author JewishBidoof
 -- @metapackage
 -- @provides
@@ -30,8 +30,8 @@
 --   [extension/darwin-arm64] ../dist/darwin-arm64/reaper_reaprofessor.dylib
 --   [extension/win64] ../dist/win64/reaper_reaprofessor64.dll
 -- @changelog
---   + Status text in cue-list footer only (no console popups on actions)
---   + Clear Master HW outs; orange Create Channels; single-screen Cue List
+--   + Fix dummy/cue fire OSC feedback loop that stuck selection
+--   + Separate Out OSC / Out MIDI / Learn for cues and Go/Back/Fire
 -- @about
 --   Live cue list for REAPER: each cue recalls FX + send snapshots.
 --   Open via Extensions → ReaProfessor or Actions → ReaProfessor.
