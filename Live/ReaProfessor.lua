@@ -27,6 +27,7 @@
 --   [nomain] ../scripts/ReaProfessor/lib/ui.lua > ReaProfessor/lib/ui.lua
 --   [data] ../resources/osc/ReaProfessor.ReaperOSC > ReaProfessor.ReaperOSC
 --   [extension/linux64] ../dist/linux64/reaper_reaprofessor-x86_64.so
+--   [extension/darwin-arm64] ../dist/darwin-arm64/reaper_reaprofessor.dylib
 -- @changelog
 --   + Extensions via native hookcustommenu (no reaper-menu.ini; other extensions stay siblings)
 --   + Removes old menu.ini hijacks from 0.4.0/0.4.1
@@ -35,4 +36,3 @@
 --   Live-oriented REAPER toolkit inspired by LiveProfessor 2.
 --   Open via Extensions → ReaProfessor or Actions → ReaProfessor.
 --   Extensions menu entry comes from reaper_reaprofessor (same API as ReaPack/SWS).
---   macOS/Windows extension binaries: build with native/Makefile or CI artifacts.

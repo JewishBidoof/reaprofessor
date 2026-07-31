@@ -37,10 +37,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build (MSVC)
-        shell: cmd
+        shell: pwsh
         run: |
-          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
-          if not exist dist\win64 mkdir dist\win64
+          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          Import-Module "$vs\Common7\Tools\Microsoft.VisualStudio.DevShell.dll"
+          Enter-VsDevShell -VsInstallPath $vs -SkipAutomaticLocation -DevCmdArguments '-arch=x64'
+          New-Item -ItemType Directory -Force -Path dist\win64 | Out-Null
           cl /nologo /O2 /LD /EHsc /D_WIN32 /I vendor\reaper-sdk native\reaper_reaprofessor.cpp /Fe:dist\win64\reaper_reaprofessor64.dll /link /DLL user32.lib
       - uses: actions/upload-artifact@v4
         with:
