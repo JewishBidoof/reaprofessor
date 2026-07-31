@@ -1,5 +1,5 @@
 -- @description ReaProfessor - Cue List
--- @version 0.5.2
+-- @version 0.5.3
 -- @author JewishBidoof
 -- @noindex
 -- @about Single-screen cue list: recall FX/send snapshots. Go / Back / Fire Selected.
@@ -33,11 +33,9 @@ local midi_ts = 0
 local learn_target = nil -- "go"|"back"|"fire"|"cue"|nil
 local learn_ts = 0
 
-local function set_status(msg, also_console)
+local function set_status(msg)
+  -- Footer only — never ShowConsoleMsg (opens/focuses the REAPER console).
   status = tostring(msg or "")
-  if also_console and status ~= "" then
-    reaper.ShowConsoleMsg("[ReaProfessor] " .. status .. "\n")
-  end
 end
 
 local function persist()
@@ -94,7 +92,7 @@ local function add_cue(as_dummy)
   cues[#cues + 1] = cue
   selected = #cues
   persist()
-  set_status(as_dummy and "Added dummy cue" or ("Captured " .. name), true)
+  set_status(as_dummy and "Added dummy cue" or ("Captured " .. name))
 end
 
 local function update_selected_snapshot()
@@ -111,7 +109,7 @@ local function update_selected_snapshot()
   capture_for_cue(cue, name)
   cues[selected] = cue
   persist()
-  set_status("Updated snapshot → " .. name, true)
+  set_status("Updated snapshot → " .. name)
 end
 
 local function delete_selected()
@@ -246,29 +244,29 @@ local function go_next()
   if not Config.actions_enabled() then return Config.deny_action("Go") end
   local ok, msg = Commands.cue_go()
   refresh()
-  set_status(msg or (ok and "GO" or "GO failed"), not ok)
+  set_status(msg or (ok and "GO" or "GO failed"))
 end
 
 local function go_back()
   if not Config.actions_enabled() then return Config.deny_action("Back") end
   local ok, msg = Commands.cue_back()
   refresh()
-  set_status(msg or (ok and "Back" or "Back failed"), not ok)
+  set_status(msg or (ok and "Back" or "Back failed"))
 end
 
 local function fire_selected()
   if not Config.actions_enabled() then return Config.deny_action("Fire") end
   local ok, msg = Commands.cue_goto(selected)
   refresh()
-  set_status(msg or (ok and "Fired" or "Fire failed"), not ok)
+  set_status(msg or (ok and "Fired" or "Fire failed"))
 end
 
 local function create_channels_popup()
   local ok, msg = Routing.prompt_create_channels()
   if ok then
-    set_status(msg, true)
+    set_status(msg)
   elseif msg and msg ~= "cancelled" and msg ~= "disabled" then
-    set_status(msg, true)
+    set_status(msg)
   end
 end
 

@@ -1,5 +1,5 @@
 -- @description ReaProfessor routing helpers (1:1 I/O, record-safe layouts)
--- @version 0.5.2
+-- @version 0.5.3
 -- @author JewishBidoof
 -- @noindex
 
@@ -327,7 +327,6 @@ function Routing.prompt_create_channels()
   meta.channel_mode = mode
   Data.save_meta(meta)
   local msg = string.format("Created %d %s channel(s)", #created, mode)
-  reaper.ShowConsoleMsg("[ReaProfessor] " .. msg .. "\n")
   return true, msg
 end
 
