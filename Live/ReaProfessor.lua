@@ -1,5 +1,5 @@
 -- @description ReaProfessor
--- @version 0.5.1
+-- @version 0.5.2
 -- @author JewishBidoof
 -- @metapackage
 -- @provides
@@ -30,9 +30,8 @@
 --   [extension/darwin-arm64] ../dist/darwin-arm64/reaper_reaprofessor.dylib
 --   [extension/win64] ../dist/win64/reaper_reaprofessor64.dll
 -- @changelog
---   + Single-screen Cue List (no hub / Extensions check footer)
---   + Create Channels via settings popup + confirm
---   + Cues recall FX + send snapshots; parent OSC / MIDI bindings
+--   + Clear Master hardware outputs on Create Channels (fix feedback)
+--   + Create Channels button color; single-screen Cue List
 -- @about
 --   Live cue list for REAPER: each cue recalls FX + send snapshots.
 --   Open via Extensions → ReaProfessor or Actions → ReaProfessor.

@@ -1,5 +1,5 @@
 -- @description ReaProfessor - Cue List
--- @version 0.5.1
+-- @version 0.5.2
 -- @author JewishBidoof
 -- @noindex
 -- @about Single-screen cue list: recall FX/send snapshots. Go / Back / Fire Selected.
@@ -490,7 +490,9 @@ local function draw()
   if UI.button("dummy", 32 + fw * 2, fy, fw, 32, "+ Dummy", { bg = UI.colors.tool_midi, fg = {0.05,0.05,0.08} }) then
     add_cue(true)
   end
-  if UI.button("ch", 40 + fw * 3, fy, fw, 32, "Create Channels", { bg = UI.colors.panel }) then
+  if UI.button("ch", 40 + fw * 3, fy, fw, 32, "Create Channels", {
+    bg = UI.colors.tool_ch, fg = {0.08, 0.03, 0.01}, border = {0.70, 0.28, 0.05},
+  }) then
     create_channels_popup()
   end
 

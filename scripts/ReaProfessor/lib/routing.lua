@@ -1,5 +1,5 @@
 -- @description ReaProfessor routing helpers (1:1 I/O, record-safe layouts)
--- @version 0.5.0
+-- @version 0.5.2
 -- @author JewishBidoof
 -- @noindex
 
@@ -26,10 +26,47 @@ local function ensure_hwout_mono(tr, hw_out_1based)
 end
 
 local function clear_hwouts(tr)
-  local _, chunk = reaper.GetTrackStateChunk(tr, "", false)
-  if not chunk or not chunk:find("HWOUT ") then return true end
-  chunk = chunk:gsub("HWOUT [^\n]+\n", "")
-  return reaper.SetTrackStateChunk(tr, chunk, false)
+  if not tr then return false end
+  -- Prefer the send API (category 1 = hardware outputs).
+  local n = reaper.GetTrackNumSends(tr, 1) or 0
+  for i = n - 1, 0, -1 do
+    reaper.RemoveTrackSend(tr, 1, i)
+  end
+  -- Also strip any leftover HWOUT lines from the track chunk.
+  local ok, chunk = reaper.GetTrackStateChunk(tr, "", false)
+  if ok and chunk and chunk:find("HWOUT ") then
+    chunk = chunk:gsub("HWOUT [^\n]+\n", "")
+    chunk = chunk:gsub("HWOUT [^\n]+", "")
+    reaper.SetTrackStateChunk(tr, chunk, false)
+  end
+  return (reaper.GetTrackNumSends(tr, 1) or 0) == 0
+end
+
+--- Remove hardware outputs from the project master track (avoids speaker feedback
+-- when channels use 1:1 HW outs to the same device).
+function Routing.clear_master_hardware_outputs()
+  local master = reaper.GetMasterTrack(0)
+  if not master then return false end
+  return clear_hwouts(master)
+end
+
+local function set_master_send(tr, on)
+  on = on and true or false
+  reaper.SetMediaTrackInfo_Value(tr, "B_MAINSEND", on and 1 or 0)
+  local ok, chunk = reaper.GetTrackStateChunk(tr, "", false)
+  if not ok or not chunk then return end
+  if chunk:find("MAINSEND ") then
+    chunk = chunk:gsub("MAINSEND [^\n]+", on and "MAINSEND 1 0" or "MAINSEND 0 0", 1)
+  else
+    -- Insert before the track's final closing '>', not the first '>' in a nested block.
+    local pos = chunk:find("\n>\n%s*$") or chunk:find("\n>$")
+    if pos then
+      chunk = chunk:sub(1, pos) .. (on and "MAINSEND 1 0" or "MAINSEND 0 0") .. chunk:sub(pos)
+    end
+  end
+  reaper.SetTrackStateChunk(tr, chunk, false)
+  -- Re-assert via API after chunk write (some hosts re-read send state from chunk).
+  reaper.SetMediaTrackInfo_Value(tr, "B_MAINSEND", on and 1 or 0)
 end
 
 local function try_arm(tr, armed)
@@ -85,20 +122,6 @@ function Routing.configure_mono_io(tr, opts)
   if opts.record_mode == "output" then mode = 1 end
   reaper.SetMediaTrackInfo_Value(tr, "I_RECMODE", mode)
   reaper.SetMediaTrackInfo_Value(tr, "I_RECMON", opts.monitor and 1 or 0)
-  -- Always drive master send from opts (default off) to avoid feedback into master.
-  local master_on = opts.master_send and true or false
-  reaper.SetMediaTrackInfo_Value(tr, "B_MAINSEND", master_on and 1 or 0)
-  do
-    local _, chunk = reaper.GetTrackStateChunk(tr, "", false)
-    if chunk then
-      if chunk:find("MAINSEND ") then
-        chunk = chunk:gsub("MAINSEND [^\n]+", master_on and "MAINSEND 1 0" or "MAINSEND 0 0", 1)
-      else
-        chunk = chunk:gsub(">", (master_on and "MAINSEND 1 0\n>" or "MAINSEND 0 0\n>"), 1)
-      end
-      reaper.SetTrackStateChunk(tr, chunk, false)
-    end
-  end
 
   if opts.arm ~= nil then
     try_arm(tr, opts.arm and true or false)
@@ -115,6 +138,9 @@ function Routing.configure_mono_io(tr, opts)
       reaper.TrackFX_Delete(tr, i)
     end
   end
+
+  -- Parent/master send last so later chunk edits cannot re-enable it.
+  set_master_send(tr, opts.master_send and true or false)
 
   return true
 end
@@ -135,6 +161,10 @@ function Routing.create_channels(count, opts)
 
   reaper.Undo_BeginBlock2(0)
   reaper.PreventUIRefresh(1)
+
+  -- Channels use direct HW outs; strip master HW outs so the same speakers
+  -- are not double-fed (feedback / combing).
+  Routing.clear_master_hardware_outputs()
 
   for i = 1, count do
     local hw_in = start_in + i - 1
@@ -201,7 +231,16 @@ function Routing.create_channels(count, opts)
     end
   end
 
+  -- Final pass: ensure no created strip still feeds master/parent.
+  for _, info in ipairs(created) do
+    if info.track then set_master_send(info.track, false) end
+    if info.rec then set_master_send(info.rec, false) end
+    if info.fx then set_master_send(info.fx, false) end
+  end
+  Routing.clear_master_hardware_outputs()
+
   reaper.PreventUIRefresh(-1)
+  reaper.TrackList_AdjustWindows(false)
   reaper.Undo_EndBlock2(0, string.format("ReaProfessor: Create %d channels (%s)", count, mode), -1)
   return created
 end
@@ -267,7 +306,9 @@ function Routing.prompt_create_channels()
   local end_in = start_in + count - 1
   local end_out = start_out + count - 1
   local summary = string.format(
-    "Create %d channel(s)?\n\nInputs %d–%d → outputs %d–%d\nMode: %s\nMaster send will be disabled (no feedback).",
+    "Create %d channel(s)?\n\nInputs %d–%d → outputs %d–%d\nMode: %s\n\n"
+      .. "Also removes Master track hardware outputs and disables\n"
+      .. "each channel's Master/parent send (avoids feedback).",
     count, start_in, end_in, start_out, end_out,
     mode == "double_patch" and "double patch (REC + FX)" or "same strip"
   )
