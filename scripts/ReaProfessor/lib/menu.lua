@@ -1,5 +1,5 @@
 -- @description ReaProfessor action registration (native Extensions menu)
--- @version 0.4.3
+-- @version 0.4.4
 -- @author JewishBidoof
 -- @noindex
 --
@@ -124,10 +124,12 @@ local function section_looks_like_ours(body)
   return false
 end
 
---- True when the native extension registered _REAPROFESSOR.
+--- True when the native extension registered _REAPROFESSOR (or set native_ext).
 function Menu.native_extension_loaded()
   local cmd = reaper.NamedCommandLookup(NATIVE_CMD)
-  return cmd and cmd ~= 0
+  if cmd and cmd ~= 0 then return true end
+  local flag = reaper.GetExtState("ReaProfessor", "native_ext")
+  return flag == "1"
 end
 
 --- Remove [Main extensions] if we (or an older ReaProfessor) customized it,

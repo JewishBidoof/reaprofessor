@@ -1,5 +1,5 @@
 -- @description ReaProfessor
--- @version 0.4.3
+-- @version 0.4.4
 -- @author JewishBidoof
 -- @metapackage
 -- @provides
@@ -29,8 +29,8 @@
 --   [extension/linux64] ../dist/linux64/reaper_reaprofessor-x86_64.so
 --   [extension/darwin-arm64] ../dist/darwin-arm64/reaper_reaprofessor.dylib
 -- @changelog
---   + Extensions via native hookcustommenu (no reaper-menu.ini; other extensions stay siblings)
---   + Removes old menu.ini hijacks from 0.4.0/0.4.1
+--   + Fix Extensions → ReaProfessor not opening the hub (menu uses script command; hookcommand2)
+--   + Extensions via native hookcustommenu (no reaper-menu.ini)
 --   + ← Back navigation; HiDPI gfx; LP2 cue list / Navigator / Live Mode
 -- @about
 --   Live-oriented REAPER toolkit inspired by LiveProfessor 2.
