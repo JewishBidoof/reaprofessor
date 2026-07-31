@@ -1,5 +1,5 @@
 -- @description ReaProfessor - Create Channels
--- @version 0.3.0
+-- @version 0.5.0
 -- @author JewishBidoof
 -- @noindex
 -- @about Create N mono channels with 1:1 hardware I/O.

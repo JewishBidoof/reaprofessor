@@ -1,5 +1,5 @@
 -- @description ReaProfessor routing helpers (1:1 I/O, record-safe layouts)
--- @version 0.3.0
+-- @version 0.5.0
 -- @author JewishBidoof
 -- @noindex
 
@@ -85,7 +85,20 @@ function Routing.configure_mono_io(tr, opts)
   if opts.record_mode == "output" then mode = 1 end
   reaper.SetMediaTrackInfo_Value(tr, "I_RECMODE", mode)
   reaper.SetMediaTrackInfo_Value(tr, "I_RECMON", opts.monitor and 1 or 0)
-  reaper.SetMediaTrackInfo_Value(tr, "B_MAINSEND", opts.master_send and 1 or 0)
+  -- Always drive master send from opts (default off) to avoid feedback into master.
+  local master_on = opts.master_send and true or false
+  reaper.SetMediaTrackInfo_Value(tr, "B_MAINSEND", master_on and 1 or 0)
+  do
+    local _, chunk = reaper.GetTrackStateChunk(tr, "", false)
+    if chunk then
+      if chunk:find("MAINSEND ") then
+        chunk = chunk:gsub("MAINSEND [^\n]+", master_on and "MAINSEND 1 0" or "MAINSEND 0 0", 1)
+      else
+        chunk = chunk:gsub(">", (master_on and "MAINSEND 1 0\n>" or "MAINSEND 0 0\n>"), 1)
+      end
+      reaper.SetTrackStateChunk(tr, chunk, false)
+    end
+  end
 
   if opts.arm ~= nil then
     try_arm(tr, opts.arm and true or false)

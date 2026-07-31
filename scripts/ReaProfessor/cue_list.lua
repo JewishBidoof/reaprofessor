@@ -1,8 +1,8 @@
--- @description ReaProfessor - Cue List (LiveProfessor 2–style)
--- @version 0.3.9
+-- @description ReaProfessor - Cue List
+-- @version 0.5.0
 -- @author JewishBidoof
 -- @noindex
--- @about Hierarchical cues with nested actions, tool palette, inspector, GO NEXT.
+-- @about Cues that recall processing snapshots. Go / Back / Fire Selected.
 
 local res = reaper.GetResourcePath() .. "/Scripts/ReaProfessor/"
 local src = debug.getinfo(1, "S").source
@@ -12,16 +12,18 @@ package.path = script_dir .. "lib/?.lua;" .. alt .. "lib/?.lua;" .. res .. "lib/
 
 local UI = require("ui")
 local Nav = require("nav")
-
-local THIS = script_dir .. "cue_list.lua"
-if not reaper.file_exists(THIS) then
-  local altp = reaper.GetResourcePath() .. "/Scripts/Live/ReaProfessor/cue_list.lua"
-  if reaper.file_exists(altp) then THIS = altp end
-end
-Nav.set_current(THIS)
 local Data = require("data")
 local Commands = require("commands")
 local Config = require("config")
+local MIDI = require("midi")
+local OSC = require("osc")
+
+local THIS = script_dir .. "cue_list.lua"
+if not reaper.file_exists(THIS) then
+  local altp = alt .. "cue_list.lua"
+  if reaper.file_exists(altp) then THIS = altp end
+end
+Nav.set_current(THIS)
 
 local cues = Data.load_cues()
 local meta = Data.load_meta()
@@ -29,11 +31,14 @@ local snaps = Data.load_snapshots()
 local selected = meta.cue_index or 1
 if selected < 1 then selected = 1 end
 if selected > #cues then selected = math.max(1, #cues) end
-local selected_action = 0 -- 0 = cue itself
+
 local status = ""
 local running = true
-local edit_mode = true
-local armed = true
+local edit_mode = meta.edit_mode and true or false
+local scroll = 0
+local midi_ts = 0
+local learn_target = nil -- "go"|"back"|"fire"|"cue"|nil
+local learn_ts = 0
 
 local function set_status(msg, also_console)
   status = tostring(msg or "")
@@ -45,6 +50,7 @@ end
 local function persist()
   Data.save_cues(cues)
   meta.cue_index = selected
+  meta.edit_mode = edit_mode
   Data.save_meta(meta)
 end
 
@@ -55,382 +61,482 @@ local function refresh()
   selected = meta.cue_index or selected
   if selected > #cues then selected = math.max(1, #cues) end
   if selected < 1 then selected = 1 end
+  edit_mode = meta.edit_mode and true or false
 end
 
-local function snapshot_exists(name)
-  if not name or name == "" then return false end
+local function find_snap(name)
+  if not name or name == "" then return nil end
   for _, s in ipairs(snaps) do
-    if s.name == name then return true end
+    if s.name == name then return s end
   end
-  return false
+  return nil
+end
+
+local function capture_for_cue(cue, name)
+  local snap = Data.capture_snapshot(name, { mode = "full", selected_only = false })
+  -- Upsert into snaps library by name
+  local replaced = false
+  for i, s in ipairs(snaps) do
+    if s.name == snap.name then
+      snaps[i] = snap
+      replaced = true
+      break
+    end
+  end
+  if not replaced then snaps[#snaps + 1] = snap end
+  Data.save_snapshots(snaps)
+  cue.snapshot_name = snap.name
+  cue.kind = "cue"
+  return snap
+end
+
+local function add_cue(as_dummy)
+  if not Config.actions_enabled() then return Config.deny_action("Add Cue") end
+  local n = #cues + 1
+  local name = as_dummy and ("Dummy " .. n) or ("Cue " .. n)
+  local cue = Data.new_cue(name, { kind = as_dummy and "dummy" or "cue" })
+  if not as_dummy then
+    capture_for_cue(cue, name)
+  end
+  cues[#cues + 1] = cue
+  selected = #cues
+  persist()
+  set_status(as_dummy and "Added dummy cue" or ("Captured " .. name), true)
+end
+
+local function update_selected_snapshot()
+  if not Config.actions_enabled() then return Config.deny_action("Update Cue") end
+  local cue = cues[selected]
+  if not cue then return end
+  cue = Data.normalize_cue(cue)
+  if cue.kind == "dummy" then
+    set_status("Dummy cue has no snapshot")
+    return
+  end
+  local name = cue.snapshot_name
+  if not name or name == "" then name = cue.name or ("Cue " .. selected) end
+  capture_for_cue(cue, name)
+  cues[selected] = cue
+  persist()
+  set_status("Updated snapshot → " .. name, true)
+end
+
+local function delete_selected()
+  if not edit_mode then return end
+  if not Config.actions_enabled() then return Config.deny_action("Delete") end
+  if not cues[selected] then return end
+  table.remove(cues, selected)
+  selected = math.max(1, math.min(selected, #cues))
+  persist()
+  set_status("Deleted cue")
+end
+
+local function move_selected(delta)
+  if not edit_mode then return end
+  local j = selected + delta
+  if j < 1 or j > #cues then return end
+  cues[selected], cues[j] = cues[j], cues[selected]
+  selected = j
+  persist()
+end
+
+local function rename_selected()
+  local cue = cues[selected]
+  if not cue then return end
+  local ok, name = reaper.GetUserInputs("Rename cue", 1, "Name:,extrawidth=220", cue.name or "")
+  if ok and name ~= "" then
+    cue.name = name
+    persist()
+  end
+end
+
+local function edit_cue_osc()
+  local cue = cues[selected]
+  if not cue then return end
+  local cur = cue.osc or ""
+  local def = Data.default_cue_osc(meta, selected)
+  local ok, val = reaper.GetUserInputs(
+    "Cue OSC", 1,
+    "OSC (blank = " .. def .. "):,extrawidth=280",
+    cur
+  )
+  if ok then
+    cue.osc = val or ""
+    persist()
+    set_status("OSC → " .. Data.cue_osc_path(cue, selected, meta))
+  end
+end
+
+local function edit_cue_midi()
+  local cue = cues[selected]
+  if not cue then return end
+  local m = cue.midi or {}
+  local def = string.format("%s,%s,%s,%s",
+    m.type or "note_on",
+    tostring(m.note or m.cc or 36),
+    tostring(m.velocity or 100),
+    tostring(m.channel or 0))
+  local ok, vals = reaper.GetUserInputs(
+    "Cue MIDI trigger", 4,
+    "Type (note_on/cc),Note or CC #,Velocity/Value,Channel (0=global)",
+    def
+  )
+  if not ok then return end
+  local typ, num, vel, ch = vals:match("([^,]+),([^,]+),([^,]+),([^,]+)")
+  typ = (typ or "note_on"):match("^%s*(.-)%s*$")
+  if typ == "" or typ == "none" or typ == "-" then
+    cue.midi = nil
+  else
+    cue.midi = {
+      type = typ,
+      note = (typ == "cc") and nil or (tonumber(num) or 36),
+      cc = (typ == "cc") and (tonumber(num) or 1) or nil,
+      velocity = tonumber(vel) or 100,
+      channel = tonumber(ch) or 0,
+    }
+  end
+  persist()
+  set_status(cue.midi and "MIDI assigned" or "MIDI cleared")
+end
+
+local function edit_parent_osc()
+  local ok, val = reaper.GetUserInputs(
+    "Parent OSC", 1, "Parent OSC prefix:,extrawidth=240", meta.osc_parent or "/ReaProfessor"
+  )
+  if ok and val and val ~= "" then
+    if val:sub(1, 1) ~= "/" then val = "/" .. val end
+    meta.osc_parent = val:gsub("/+$", "")
+    persist()
+    set_status("Parent OSC → " .. meta.osc_parent)
+  end
+end
+
+local function cycle_midi_channel()
+  -- 0=omni, then 1..16, wrap
+  meta.midi_channel = (tonumber(meta.midi_channel) or 0) + 1
+  if meta.midi_channel > 16 then meta.midi_channel = 0 end
+  persist()
+end
+
+local function midi_channel_label()
+  local ch = tonumber(meta.midi_channel) or 0
+  if ch <= 0 then return "MIDI: Omni" end
+  return string.format("MIDI: Ch %d", ch)
+end
+
+local function describe_midi(m)
+  if type(m) ~= "table" then return "—" end
+  if m.type == "cc" then
+    return string.format("CC%d%s", m.cc or 0, (m.channel and m.channel > 0) and ("/ch" .. m.channel) or "")
+  end
+  return string.format("N%d%s", m.note or 0, (m.channel and m.channel > 0) and ("/ch" .. m.channel) or "")
+end
+
+local function edit_transport_binding(which)
+  local t = meta.transport[which] or { midi = nil, osc = "" }
+  local cur_osc = t.osc or ""
+  local ok, val = reaper.GetUserInputs(
+    "Transport " .. which:upper(), 1,
+    "OSC path (blank=none). Then Learn MIDI or Cancel:,extrawidth=280",
+    cur_osc
+  )
+  if not ok then return end
+  t.osc = val or ""
+  meta.transport[which] = t
+  persist()
+  learn_target = which
+  learn_ts = midi_ts
+  set_status("Learn MIDI for " .. which:upper() .. " (play a note/CC)…")
 end
 
 local function go_next()
-  if not Config.actions_enabled() then return Config.deny_action("Cue GO") end
-  if not armed then set_status("Disarmed — enable Armed to fire"); return end
+  if not Config.actions_enabled() then return Config.deny_action("Go") end
   local ok, msg = Commands.cue_go()
   refresh()
   set_status(msg or (ok and "GO" or "GO failed"), not ok)
 end
 
 local function go_back()
-  if not Config.actions_enabled() then return Config.deny_action("Cue Back") end
+  if not Config.actions_enabled() then return Config.deny_action("Back") end
   local ok, msg = Commands.cue_back()
   refresh()
   set_status(msg or (ok and "Back" or "Back failed"), not ok)
 end
 
-local function go_to(idx)
-  if not Config.actions_enabled() then return Config.deny_action("Cue Fire") end
-  if not armed then set_status("Disarmed — enable Armed to fire"); return end
-  local ok, msg = Commands.cue_goto(idx)
+local function fire_selected()
+  if not Config.actions_enabled() then return Config.deny_action("Fire") end
+  local ok, msg = Commands.cue_goto(selected)
   refresh()
   set_status(msg or (ok and "Fired" or "Fire failed"), not ok)
 end
 
-local function add_empty_cue()
-  if not Config.actions_enabled() then return Config.deny_action("Add Cue") end
-  local cue = Data.new_cue("Cue " .. tostring(#cues + 1))
-  cues[#cues + 1] = cue
-  selected = #cues
-  selected_action = 0
-  persist()
-  set_status("Added empty cue")
-end
-
---- Capture full FX as snapshot action inside a new (or selected) cue — LP camera tool.
-local function add_snapshot_action(into_selected)
-  if not Config.actions_enabled() then return Config.deny_action("Add Snapshot Action") end
-  local default_name = "Snapshot " .. tostring(#snaps + 1)
-  local retval, name = reaper.GetUserInputs("Snapshot action", 1, "Snapshot name:,extrawidth=220", default_name)
-  if not retval or name == "" then return end
-
-  local snap = Data.capture_snapshot(name, {
-    mode = "full",
-    selected_only = meta.selected_only and true or false,
-  })
-  snaps[#snaps + 1] = snap
-  Data.save_snapshots(snaps)
-
-  local cue
-  if into_selected and cues[selected] then
-    cue = Data.normalize_cue(cues[selected])
+local function open_channels()
+  local path = Nav.resolve("create_channels.lua", script_dir)
+  if path and reaper.file_exists(path) then
+    Nav.go(path)
+    running = false
   else
-    cue = Data.new_cue(name)
-    cues[#cues + 1] = cue
-    selected = #cues
+    set_status("create_channels.lua missing")
   end
-  cue.actions[#cue.actions + 1] = {
-    kind = "snapshot",
-    snapshot = name,
-    label = name,
-  }
-  cue.payload = cue.payload or {}
-  cue.payload.snapshot = name
-  cue.kind = "snapshot"
-  cues[selected] = cue
-  selected_action = #cue.actions
-  persist()
-  set_status("Snapshot action → " .. name, true)
 end
 
-local function add_midi_action()
-  if not Config.actions_enabled() then return Config.deny_action("Add MIDI Action") end
-  if not cues[selected] then add_empty_cue() end
-  local cue = Data.normalize_cue(cues[selected])
-  local retval, vals = reaper.GetUserInputs("MIDI action", 3, "Channel,Note,Velocity", "1,36,100")
-  if not retval then return end
-  local ch, note, vel = vals:match("([^,]+),([^,]+),([^,]+)")
-  cue.actions[#cue.actions + 1] = {
-    kind = "midi",
-    type = "note_on",
-    channel = tonumber(ch) or 1,
-    note = tonumber(note) or 36,
-    velocity = tonumber(vel) or 100,
-    label = string.format("MIDI ch%s note%s", tostring(ch), tostring(note)),
-  }
-  cues[selected] = cue
-  selected_action = #cue.actions
-  persist()
-  set_status("MIDI action added")
+local function build_listen_map()
+  local map = {}
+  for key, cmd in pairs({ go = "cue_go", back = "cue_back", fire = "cue_goto" }) do
+    local t = meta.transport[key]
+    if t and type(t.midi) == "table" then
+      local b = {
+        type = t.midi.type or "note_on",
+        note = t.midi.note,
+        cc = t.midi.cc,
+        channel = t.midi.channel,
+        threshold = 1,
+        command = cmd,
+        arg = (cmd == "cue_goto") and selected or nil,
+        enabled = true,
+      }
+      map[#map + 1] = b
+    end
+  end
+  for i, cue in ipairs(cues) do
+    cue = Data.normalize_cue(cue)
+    if type(cue.midi) == "table" then
+      map[#map + 1] = {
+        type = cue.midi.type or "note_on",
+        note = cue.midi.note,
+        cc = cue.midi.cc,
+        channel = cue.midi.channel,
+        threshold = 1,
+        command = "cue_goto",
+        arg = i,
+        enabled = true,
+      }
+    end
+  end
+  return map
 end
 
-local function add_comment_action()
-  if not Config.actions_enabled() then return Config.deny_action("Add Comment") end
-  if not cues[selected] then add_empty_cue() end
-  local cue = Data.normalize_cue(cues[selected])
-  local retval, text = reaper.GetUserInputs("Comment action", 1, "Text:,extrawidth=260", "")
-  if not retval or text == "" then return end
-  cue.actions[#cue.actions + 1] = { kind = "comment", label = text }
-  cues[selected] = cue
-  selected_action = #cue.actions
-  persist()
-end
-
-local function delete_selected()
-  if not Config.actions_enabled() then return Config.deny_action("Delete") end
-  local cue = cues[selected]
-  if not cue then return end
-  if selected_action > 0 and cue.actions and cue.actions[selected_action] then
-    table.remove(cue.actions, selected_action)
-    selected_action = math.max(0, math.min(selected_action, #cue.actions))
-    cues[selected] = cue
-    persist()
-    set_status("Deleted action")
+local function poll_midi()
+  if learn_target then
+    local ev, ts = MIDI.learn_next(learn_ts)
+    learn_ts = ts or learn_ts
+    if ev then
+      local m = {
+        type = ev.type == "cc" and "cc" or "note_on",
+        note = ev.note,
+        cc = ev.cc,
+        velocity = ev.velocity or ev.value or 100,
+        channel = 0, -- use global channel filter
+      }
+      if learn_target == "cue" then
+        local cue = cues[selected]
+        if cue then
+          cue.midi = m
+          persist()
+          set_status("Cue MIDI learned: " .. describe_midi(m))
+        end
+      else
+        meta.transport[learn_target] = meta.transport[learn_target] or { osc = "" }
+        meta.transport[learn_target].midi = m
+        persist()
+        set_status(learn_target:upper() .. " MIDI learned: " .. describe_midi(m))
+      end
+      learn_target = nil
+    end
+    midi_ts = learn_ts
     return
   end
-  table.remove(cues, selected)
-  selected = math.max(1, math.min(selected, #cues))
-  selected_action = 0
-  persist()
-  set_status("Deleted cue")
-end
 
-local function rename_cue()
-  if not Config.actions_enabled() then return Config.deny_action("Rename") end
-  local cue = cues[selected]
-  if not cue then return end
-  local retval, new_name = reaper.GetUserInputs("Rename cue", 1, "Name:,extrawidth=200", cue.name or "")
-  if retval and new_name ~= "" then
-    cue.name = new_name
-    persist()
+  local map = build_listen_map()
+  local cmds
+  cmds, midi_ts = MIDI.poll_commands_v2(map, midi_ts, { global_channel = meta.midi_channel })
+  for _, c in ipairs(cmds) do
+    if c.command == "cue_go" then go_next()
+    elseif c.command == "cue_back" then go_back()
+    elseif c.command == "cue_goto" then
+      local idx = tonumber(c.arg) or selected
+      selected = idx
+      fire_selected()
+    end
+  end
+
+  -- OSC queue for transport + cue paths
+  for _, item in ipairs(OSC.drain_queue()) do
+    local path = item.path
+    if not path then goto continue end
+    for key, cmd in pairs({ go = true, back = true, fire = true }) do
+      local t = meta.transport[key]
+      if t and t.osc and t.osc ~= "" and path == t.osc then
+        if key == "go" then go_next()
+        elseif key == "back" then go_back()
+        else fire_selected() end
+        goto continue
+      end
+    end
+    for i, cue in ipairs(cues) do
+      if path == Data.cue_osc_path(cue, i, meta) then
+        selected = i
+        fire_selected()
+        break
+      end
+    end
+    ::continue::
   end
 end
 
-local function edit_timing(field)
-  if not Config.actions_enabled() then return end
-  local cue = cues[selected]
-  if not cue then return end
-  local cur = Data.format_ms(cue[field] or 0)
-  local retval, val = reaper.GetUserInputs("Edit " .. field, 1, "Time (mm:ss:cs or ms):,extrawidth=160", cur)
-  if not retval then return end
-  cue[field] = Data.parse_time_input(val)
-  persist()
-end
-
-UI.init("ReaProfessor · Cue List", 700, 680, 0)
-
-local CUE_H = 28
-local ACT_H = 26
-local TOOL = 28
+UI.init("ReaProfessor · Cue List", 720, 720, 0)
 
 local function draw()
   local w, h = UI.dims()
-  local mx, my, mcap = UI.mouse()
   UI.fill_rect(0, 0, w, h, UI.colors.bg)
-  if Nav.back_button(UI, 8, 10) then running = false end
 
-  -- Title
-  UI.fill_rect(0, 0, w, 36, UI.colors.header)
+  -- Header
+  UI.fill_rect(0, 0, w, 56, UI.colors.header)
+  UI.hline(0, 56, w, UI.colors.border)
+  if Nav.back_button(UI, 8, 12) then running = false end
   gfx.setfont(2)
-  UI.label(96, 8, "Cue List", UI.colors.text)
+  UI.label(96, 10, "CUE LIST", UI.colors.text)
   gfx.setfont(3)
-  UI.label(200, 12, "tools add actions into cues  ·  Space = GO NEXT", UI.colors.muted)
+  UI.label(96, 34, "Each cue recalls a full FX + send snapshot", UI.colors.muted)
 
-  -- Tool palette (LP style)
-  local ty = 42
-  UI.fill_rect(0, ty, w, TOOL + 12, UI.colors.panel)
-  UI.hline(0, ty + TOOL + 12, w, UI.colors.border)
-  local tx = 10
-  if UI.tool_btn("tq", tx, ty + 6, TOOL, "Q", UI.colors.tool_q) then add_empty_cue() end
-  tx = tx + TOOL + 6
-  if UI.tool_btn("ts", tx, ty + 6, TOOL, "S", UI.colors.tool_snap) then
-    add_snapshot_action(false) -- new cue + snapshot
+  -- Transport
+  local y = 68
+  local bw = math.floor((w - 48) / 3)
+  if UI.go_button("go", 16, y, bw, 44, "GO") then go_next() end
+  if UI.button("back", 24 + bw, y, bw, 44, "BACK", { bg = UI.colors.panel }) then go_back() end
+  if UI.button("fire", 32 + bw * 2, y, bw, 44, "FIRE SELECTED", { bg = UI.colors.selected }) then
+    fire_selected()
   end
-  tx = tx + TOOL + 6
-  if UI.tool_btn("tS", tx, ty + 6, TOOL, "+S", UI.colors.tool_snap) then
-    add_snapshot_action(true) -- into selected
+
+  -- Settings row
+  y = 124
+  gfx.setfont(3)
+  UI.label(16, y + 6, "Parent OSC", UI.colors.muted)
+  if UI.button("parent", 100, y, math.min(220, w * 0.35), 28, meta.osc_parent or "/ReaProfessor", { bg = UI.colors.panel2, font = 3 }) then
+    edit_parent_osc()
   end
-  tx = tx + TOOL + 6
-  if UI.tool_btn("tm", tx, ty + 6, TOOL, "M", UI.colors.tool_midi) then add_midi_action() end
-  tx = tx + TOOL + 6
-  if UI.tool_btn("tn", tx, ty + 6, TOOL, "…", UI.colors.tool_note) then add_comment_action() end
+  if UI.button("midich", 110 + math.min(220, w * 0.35), y, 110, 28, midi_channel_label(), { bg = UI.colors.panel2, font = 3 }) then
+    cycle_midi_channel()
+  end
+  local edit_bg = edit_mode and UI.colors.edit or UI.colors.panel
+  if UI.button("edit", w - 100, y, 84, 28, edit_mode and "EDIT ON" or "EDIT", { bg = edit_bg, fg = edit_mode and {0.1,0.1,0.05} or UI.colors.text, font = 3 }) then
+    edit_mode = not edit_mode
+    persist()
+  end
+
+  -- Transport bindings
+  y = 160
   gfx.setfont(3)
-  UI.label(tx + TOOL + 12, ty + 12, "Q cue · S new+snap · +S into cue · M MIDI · … comment", UI.colors.muted)
+  UI.label(16, y, "Go / Back / Fire bindings (click to set OSC, then learn MIDI)", UI.colors.muted)
+  y = 178
+  for i, key in ipairs({ "go", "back", "fire" }) do
+    local t = meta.transport[key] or {}
+    local label = string.format("%s  MIDI:%s  OSC:%s",
+      key:upper(),
+      describe_midi(t.midi),
+      (t.osc and t.osc ~= "") and t.osc or "—")
+    local x = 16 + (i - 1) * ((w - 40) / 3)
+    if UI.button("tr_" .. key, x, y, (w - 48) / 3, 26, label, { bg = UI.colors.panel2, font = 3 }) then
+      edit_transport_binding(key)
+    end
+  end
 
-  local list_top = ty + TOOL + 14
-  local inspector_h = 110
-  local bottom_h = 72
-  local list_h = h - list_top - inspector_h - bottom_h
+  -- Cue list
+  y = 216
+  UI.hline(16, y, w - 32, UI.colors.border)
+  y = 224
+  local list_top = y
+  local list_bottom = h - 120
+  local row_h = 36
+  local visible = math.max(1, math.floor((list_bottom - list_top) / row_h))
+  if selected < scroll + 1 then scroll = selected - 1 end
+  if selected > scroll + visible then scroll = selected - visible end
+  if scroll < 0 then scroll = 0 end
 
-  UI.fill_rect(8, list_top, w - 16, list_h, UI.colors.panel)
-  UI.stroke_rect(8, list_top, w - 16, list_h, UI.colors.border)
-
-  -- Column headers
-  gfx.setfont(3)
-  UI.fill_rect(8, list_top, w - 16, 20, UI.colors.header)
-  UI.label(36, list_top + 3, "#  NAME", UI.colors.muted)
-  UI.label(w - 200, list_top + 3, "FADE", UI.colors.muted)
-  UI.label(w - 130, list_top + 3, "PRE", UI.colors.muted)
-  UI.label(w - 70, list_top + 3, "POST", UI.colors.muted)
+  for row = 1, visible do
+    local idx = scroll + row
+    local cue = cues[idx]
+    local yy = list_top + (row - 1) * row_h
+    if not cue then break end
+    cue = Data.normalize_cue(cue)
+    local is_sel = (idx == selected)
+    local is_next = (idx == (meta.cue_index or 1))
+    local bg = is_sel and UI.colors.selected or (is_next and UI.colors.next_cue or ((row % 2 == 0) and UI.colors.row_alt or UI.colors.panel))
+    if UI.button("cue_" .. idx, 16, yy, w - 32, row_h - 2, "", { bg = bg }) then
+      selected = idx
+      persist()
+    end
+    gfx.setfont(1)
+    local kind_tag = (cue.kind == "dummy") and "D" or tostring(idx)
+    UI.label(24, yy + 8, kind_tag, UI.colors.accent)
+    UI.label(56, yy + 8, cue.name or ("Cue " .. idx), UI.colors.text)
+    gfx.setfont(3)
+    local osc = Data.cue_osc_path(cue, idx, meta)
+    local snap_ok = cue.kind == "dummy" or find_snap(cue.snapshot_name)
+    local right = string.format("%s  %s  %s",
+      describe_midi(cue.midi),
+      osc,
+      cue.kind == "dummy" and "dummy" or (snap_ok and "snap" or "MISSING"))
+    local tw = select(1, UI.measure(right))
+    UI.label(w - 24 - tw, yy + 10, right, snap_ok and UI.colors.muted or UI.colors.danger)
+  end
 
   if #cues == 0 then
     gfx.setfont(1)
-    UI.label(24, list_top + 40, "Empty list — press Q or S to add a cue.", UI.colors.muted)
+    UI.label(24, list_top + 20, "No cues yet — Capture Cue to store the current FX/sends state.", UI.colors.muted)
   end
 
-  local y = list_top + 22
-  local next_idx = meta.cue_index or 1
-  local max_y = list_top + list_h - 4
-
-  for i, cue in ipairs(cues) do
-    if y > max_y then break end
-    cue = Data.normalize_cue(cue)
-    cues[i] = cue
-    local is_sel = (i == selected and selected_action == 0)
-    local is_next = (i == next_idx)
-    local bg = is_sel and UI.colors.selected or (is_next and UI.colors.next_cue or UI.colors.panel2)
-    UI.fill_rect(10, y, w - 20, CUE_H - 2, bg)
-    if is_sel then UI.fill_rect(10, y, 3, CUE_H - 2, UI.colors.accent) end
-
-    -- Expand triangle
-    local tri = cue.expanded and "▼" or "▶"
-    gfx.setfont(3)
-    UI.label(16, y + 6, tri, UI.colors.muted)
-    local tri_hit = mx >= 14 and mx <= 34
-                 and my >= y and my <= y + CUE_H
-    local down = mcap & 1 == 1
-    if tri_hit and down and not UI._cue_down then
-      cue.expanded = not cue.expanded
-      persist()
-    end
-
-    gfx.setfont(4)
-    UI.label(40, y + 7, tostring(i), UI.colors.tool_q)
-    gfx.setfont(1)
-    UI.label(64, y + 5, cue.name or "Cue", UI.colors.text)
-    gfx.setfont(4)
-    UI.label(w - 200, y + 7, Data.format_ms(cue.fade_ms), UI.colors.muted)
-    UI.label(w - 130, y + 7, Data.format_ms(cue.pre_wait_ms), UI.colors.muted)
-    UI.label(w - 70, y + 7, Data.format_ms(cue.post_wait_ms), UI.colors.muted)
-
-    local hit = mx >= 36 and mx <= w - 12
-            and my >= y and my <= y + CUE_H - 2
-    if hit and down and not UI._cue_down then
-      if selected == i and selected_action == 0 and UI._last_cue_i == i
-         and (reaper.time_precise() - (UI._last_cue_t or 0) < 0.35) then
-        go_to(i)
-        UI._last_cue_t = 0
-      else
-        selected = i
-        selected_action = 0
-        meta.cue_index = selected
-        Data.save_meta(meta)
-        UI._last_cue_i = i
-        UI._last_cue_t = reaper.time_precise()
-      end
-    end
-
-    y = y + CUE_H
-
-    if cue.expanded then
-      for ai, act in ipairs(cue.actions or {}) do
-        if y > max_y then break end
-        local abg = (i == selected and selected_action == ai) and UI.colors.selected or UI.colors.row_alt
-        UI.fill_rect(28, y, w - 38, ACT_H - 2, abg)
-        local icon = "S"
-        local ic = UI.colors.tool_snap
-        if act.kind == "midi" then icon = "M"; ic = UI.colors.tool_midi
-        elseif act.kind == "comment" then icon = "…"; ic = UI.colors.tool_note
-        elseif act.kind == "action" then icon = "A"; ic = UI.colors.tool_cmd end
-        UI.fill_rect(34, y + 4, 16, 16, ic)
-        gfx.setfont(3)
-        UI.label(36, y + 5, icon, {0.05, 0.05, 0.05})
-        local label = act.label or act.snapshot or act.kind or "?"
-        local missing = act.kind == "snapshot" and not snapshot_exists(act.snapshot or act.label)
-        UI.label(56, y + 5, label .. (missing and "  !missing" or ""), missing and UI.colors.danger or UI.colors.text)
-
-        local ahit = mx >= 28 and mx <= w - 12
-                 and my >= y and my <= y + ACT_H - 2
-        if ahit and down and not UI._cue_down then
-          selected = i
-          selected_action = ai
-          meta.cue_index = selected
-          Data.save_meta(meta)
-        end
-        y = y + ACT_H
-      end
-    end
+  -- Footer actions
+  local fy = h - 104
+  UI.hline(16, fy - 8, w - 32, UI.colors.border)
+  local fw = math.floor((w - 56) / 4)
+  if UI.button("add", 16, fy, fw, 32, "+ Capture Cue", { bg = UI.colors.tool_snap, fg = {0.05,0.08,0.05} }) then
+    add_cue(false)
+  end
+  if UI.button("upd", 24 + fw, fy, fw, 32, "Update Selected", { bg = UI.colors.panel }) then
+    update_selected_snapshot()
+  end
+  if UI.button("dummy", 32 + fw * 2, fy, fw, 32, "+ Dummy", { bg = UI.colors.tool_midi, fg = {0.05,0.05,0.08} }) then
+    add_cue(true)
+  end
+  if UI.button("ch", 40 + fw * 3, fy, fw, 32, "Create Channels", { bg = UI.colors.panel }) then
+    open_channels()
   end
 
-  if mcap & 1 == 0 then UI._cue_down = false else UI._cue_down = true end
-
-  -- Inspector (LP bottom properties)
-  local iy = list_top + list_h + 4
-  UI.fill_rect(8, iy, w - 16, inspector_h - 8, UI.colors.panel)
-  UI.stroke_rect(8, iy, w - 16, inspector_h - 8, UI.colors.border)
-  gfx.setfont(3)
-  UI.label(16, iy + 6, "Cue", UI.colors.accent)
-
-  local cue = cues[selected]
-  if cue then
-    cue = Data.normalize_cue(cue)
-    UI.label(16, iy + 28, "No.", UI.colors.muted)
-    UI.field(40, iy + 24, 36, 22, tostring(selected))
-    UI.label(86, iy + 28, "Name", UI.colors.muted)
-    UI.field(126, iy + 24, 180, 22, cue.name or "")
-    if UI.button("ren", 314, iy + 24, 70, 22, "Edit") then rename_cue() end
-
-    UI.label(16, iy + 56, "Fade", UI.colors.muted)
-    UI.field(50, iy + 52, 80, 22, Data.format_ms(cue.fade_ms))
-    if UI.button("fade", 134, iy + 52, 40, 22, "…") then edit_timing("fade_ms") end
-    UI.label(186, iy + 56, "Pre", UI.colors.muted)
-    UI.field(214, iy + 52, 80, 22, Data.format_ms(cue.pre_wait_ms))
-    if UI.button("pre", 298, iy + 52, 40, 22, "…") then edit_timing("pre_wait_ms") end
-    UI.label(348, iy + 56, "Post", UI.colors.muted)
-    UI.field(382, iy + 52, 80, 22, Data.format_ms(cue.post_wait_ms))
-    if UI.button("post", 466, iy + 52, 40, 22, "…") then edit_timing("post_wait_ms") end
-
-    if UI.checkbox("fall", 16, iy + 82, "Fire all actions in the cue", cue.fire_all ~= false) then
-      cue.fire_all = not (cue.fire_all ~= false)
-      cues[selected] = cue
-      persist()
-    end
-    if UI.checkbox("midi", 280, iy + 82, "Trigger by MIDI", cue.trigger_midi) then
-      cue.trigger_midi = not cue.trigger_midi
-      cues[selected] = cue
-      persist()
-    end
-  else
-    UI.label(16, iy + 36, "No cue selected", UI.colors.muted)
+  fy = h - 64
+  if edit_mode then
+    if UI.button("up", 16, fy, 56, 28, "↑", { bg = UI.colors.panel2 }) then move_selected(-1) end
+    if UI.button("dn", 80, fy, 56, 28, "↓", { bg = UI.colors.panel2 }) then move_selected(1) end
+    if UI.button("del", 144, fy, 72, 28, "Delete", { bg = UI.colors.danger }) then delete_selected() end
+    if UI.button("ren", 224, fy, 72, 28, "Rename", { bg = UI.colors.panel2 }) then rename_selected() end
   end
-
-  -- Bottom transport
-  local by = h - bottom_h
-  UI.fill_rect(0, by, w, bottom_h, UI.colors.header)
-  UI.hline(0, by, w, UI.colors.border)
-  if UI.go_button("go", 12, by + 14, 160, 44, "GO NEXT") then go_next() end
-  if UI.button("back", 184, by + 20, 72, 32, "BACK") then go_back() end
-  if UI.button("fire", 264, by + 20, 72, 32, "Fire") then go_to(selected) end
-  if edit_mode and UI.button("del", 344, by + 20, 72, 32, "Delete", { bg = UI.colors.danger }) then
-    delete_selected()
+  if UI.button("cosc", w - 260, fy, 80, 28, "Cue OSC", { bg = UI.colors.panel2, font = 3 }) then
+    edit_cue_osc()
   end
-
-  local edit_bg = edit_mode and UI.colors.edit or UI.colors.panel
-  if UI.button("edit", w - 200, by + 20, 88, 32, "Edit Mode", {
-    bg = edit_bg, fg = edit_mode and {0.1, 0.1, 0.05} or UI.colors.text
-  }) then edit_mode = not edit_mode end
-  local arm_bg = armed and UI.colors.armed or UI.colors.panel
-  if UI.button("arm", w - 100, by + 20, 88, 32, armed and "Armed" or "Safe", { bg = arm_bg }) then
-    armed = not armed
+  if UI.button("cmidi", w - 172, fy, 80, 28, "Cue MIDI", { bg = UI.colors.panel2, font = 3 }) then
+    edit_cue_midi()
+  end
+  if UI.button("learn", w - 84, fy, 68, 28, learn_target and "…" or "Learn", { bg = UI.colors.panel2, font = 3 }) then
+    learn_target = "cue"
+    learn_ts = midi_ts
+    set_status("Learn MIDI for selected cue…")
   end
 
   gfx.setfont(3)
-  UI.label(430, by + 28, status ~= "" and status or string.format("%d cues", #cues), UI.colors.muted)
+  UI.label(16, h - 28, status, UI.colors.muted)
 
   local ch = gfx.getchar()
-  if ch == 27 or ch < 0 then
-    if Nav.can_back() then Nav.back() end
-    running = false
-  elseif ch == 32 then go_next()
-  elseif ch == 8 then go_back()
-  elseif ch == ("q"):byte() then add_empty_cue()
-  elseif ch == ("s"):byte() then add_snapshot_action(false)
-  end
+  if ch == 27 or ch < 0 then running = false end
+  if ch == 13 then fire_selected() end -- Enter
+  if ch == 32 then go_next() end -- Space
 end
 
 local function loop()
-  if not running then UI.quit_and_nav(Nav); return end
+  if not running then
+    UI.quit_and_nav(Nav)
+    return
+  end
+  poll_midi()
   draw()
   gfx.update()
   reaper.defer(loop)

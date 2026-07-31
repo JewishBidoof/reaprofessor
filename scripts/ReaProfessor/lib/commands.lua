@@ -1,5 +1,5 @@
 -- @description ReaProfessor central command handlers
--- @version 0.3.9
+-- @version 0.5.0
 -- @author JewishBidoof
 -- @noindex
 
@@ -56,92 +56,78 @@ local function find_snapshot(snaps, key)
   return nil, nil
 end
 
---- Fire one cue. Returns ok, status_message.
--- LP2 model: a cue is a container; all actions fire (fire_all) or just the first.
-local function fire_action(act, snaps)
-  if not act then return false, "No action" end
-  local Data = require("data")
-  if act.kind == "snapshot" then
-    local key = act.snapshot or act.label
-    local snap = select(1, find_snapshot(snaps, key))
-    if not snap then
-      return false, string.format("Missing snapshot '%s' — capture one or re-link this cue", tostring(key or "?"))
-    end
-    Data.recall_snapshot(snap)
-    local meta = Data.load_meta()
-    meta.last_snapshot = snap.name
-    Data.save_meta(meta)
-    return true, "Snapshot " .. tostring(snap.name)
-  elseif act.kind == "action" then
-    local cmd = act.command_id
-    if not cmd then return false, "Action has no command id" end
-    local id = reaper.NamedCommandLookup(tostring(cmd))
-    if id == 0 then id = tonumber(cmd) or 0 end
-    if id == 0 then return false, "Unknown action " .. tostring(cmd) end
-    reaper.Main_OnCommand(id, 0)
-    return true, "Action " .. tostring(cmd)
-  elseif act.kind == "midi" then
-    -- Soft MIDI out via StuffMIDIMessage when available (channel 0-15)
-    local ch = (tonumber(act.channel) or 1) - 1
-    if ch < 0 then ch = 0 end
-    if ch > 15 then ch = 15 end
-    local note = tonumber(act.note) or 36
-    local vel = tonumber(act.velocity) or 100
-    local status = 0x90 + ch
-    if act.type == "cc" then
-      status = 0xB0 + ch
-      note = tonumber(act.cc) or note
-    elseif act.type == "note_off" then
-      status = 0x80 + ch
-    end
-    if reaper.StuffMIDIMessage then
-      reaper.StuffMIDIMessage(0, status, note, vel)
-      return true, "MIDI"
-    end
-    return false, "StuffMIDIMessage unavailable"
-  elseif act.kind == "comment" then
-    return true, act.label or "Comment"
+local function send_midi_msg(midi, global_ch)
+  if type(midi) ~= "table" then return false, "No MIDI" end
+  local ch = tonumber(midi.channel) or tonumber(global_ch) or 1
+  if ch < 1 then ch = 1 end
+  if ch > 16 then ch = 16 end
+  ch = ch - 1
+  local note = tonumber(midi.note) or 36
+  local vel = tonumber(midi.velocity) or 100
+  local status = 0x90 + ch
+  if midi.type == "cc" then
+    status = 0xB0 + ch
+    note = tonumber(midi.cc) or note
+  elseif midi.type == "note_off" then
+    status = 0x80 + ch
   end
-  return false, "Unknown action kind: " .. tostring(act.kind)
+  if not reaper.StuffMIDIMessage then
+    return false, "StuffMIDIMessage unavailable"
+  end
+  reaper.StuffMIDIMessage(0, status, note, vel)
+  return true, "MIDI"
 end
 
-local function fire_cue(cue, snaps)
+--- Fire one cue: recall its snapshot (unless dummy), optionally send MIDI/OSC.
+local function fire_cue(cue, snaps, cue_index)
   if not cue then return false, "No cue" end
   local Data = require("data")
+  local meta = Data.load_meta()
   cue = Data.normalize_cue(cue)
-
-  -- Optional pre-wait (blocking sleep kept short; long waits use defer in UI later)
-  local pre = tonumber(cue.pre_wait_ms) or 0
-  if pre > 0 and pre <= 2000 then
-    local t0 = reaper.time_precise()
-    while (reaper.time_precise() - t0) * 1000 < pre do end
-  end
-
-  local actions = cue.actions or {}
-  if #actions == 0 then
-    return false, "Cue has no actions — add a Snapshot action"
-  end
-
   local msgs = {}
   local any_ok = false
-  local limit = cue.fire_all == false and 1 or #actions
-  for i = 1, limit do
-    local ok, msg = fire_action(actions[i], snaps)
-    if ok then any_ok = true end
-    msgs[#msgs + 1] = msg
-    if not ok and cue.fire_all ~= false then
-      -- continue firing remaining actions (LP fires all; report failures)
+
+  if cue.kind ~= "dummy" then
+    local key = cue.snapshot_name
+    if (not key or key == "") and type(cue.actions) == "table" then
+      for _, a in ipairs(cue.actions) do
+        if a.kind == "snapshot" then key = a.snapshot or a.label break end
+      end
     end
+    if not key or key == "" then
+      return false, "Cue has no snapshot — use Capture / Update"
+    end
+    local snap = select(1, find_snapshot(snaps, key))
+    if not snap then
+      return false, string.format("Missing snapshot '%s'", tostring(key))
+    end
+    Data.recall_snapshot(snap, { mode = "full" })
+    meta.last_snapshot = snap.name
+    Data.save_meta(meta)
+    msgs[#msgs + 1] = "Recall " .. tostring(snap.name)
+    any_ok = true
   end
 
-  local post = tonumber(cue.post_wait_ms) or 0
-  if post > 0 and post <= 2000 then
-    local t0 = reaper.time_precise()
-    while (reaper.time_precise() - t0) * 1000 < post do end
+  local should_send = (cue.kind == "dummy") or cue.send_on_fire
+  if should_send then
+    if cue.midi then
+      local ok, msg = send_midi_msg(cue.midi, meta.midi_channel > 0 and meta.midi_channel or 1)
+      if ok then any_ok = true end
+      msgs[#msgs + 1] = msg
+    end
+    local osc_path = Data.cue_osc_path(cue, cue_index or meta.cue_index or 1, meta)
+    if osc_path and osc_path ~= "" then
+      local OSC = require("osc")
+      if OSC.enqueue then OSC.enqueue(osc_path, { 1.0 }) end
+      -- Best-effort: also set ExtState bridge for external OSC senders/monitors.
+      reaper.SetExtState("ReaProfessor", "osc_out", osc_path, false)
+      msgs[#msgs + 1] = "OSC " .. osc_path
+      any_ok = true
+    end
   end
 
   if not any_ok then
-    return false, table.concat(msgs, "; ")
+    return false, (#msgs > 0) and table.concat(msgs, "; ") or "Nothing to fire"
   end
   return true, table.concat(msgs, " · ")
 end
@@ -181,7 +167,7 @@ function Commands.cue_go()
   local idx = meta.cue_index or 1
   if idx < 1 then idx = 1 end
   if idx > #cues then idx = #cues end
-  local ok, msg = fire_cue(cues[idx], snaps)
+  local ok, msg = fire_cue(cues[idx], snaps, idx)
   meta.cue_index = math.min(#cues, idx + 1)
   Data.save_meta(meta)
   return ok, msg
@@ -195,7 +181,7 @@ function Commands.cue_back()
   local snaps = Data.load_snapshots()
   if #cues == 0 then return false, "Cue list is empty" end
   local idx = math.max(1, (meta.cue_index or 1) - 1)
-  local ok, msg = fire_cue(cues[idx], snaps)
+  local ok, msg = fire_cue(cues[idx], snaps, idx)
   meta.cue_index = idx
   Data.save_meta(meta)
   return ok, msg
@@ -209,7 +195,7 @@ function Commands.cue_goto(n)
   local snaps = Data.load_snapshots()
   local idx = tonumber(n) or 1
   if idx < 1 or idx > #cues then return false, "Cue index out of range" end
-  local ok, msg = fire_cue(cues[idx], snaps)
+  local ok, msg = fire_cue(cues[idx], snaps, idx)
   meta.cue_index = idx
   Data.save_meta(meta)
   return ok, msg
