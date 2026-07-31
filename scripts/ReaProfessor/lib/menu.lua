@@ -1,5 +1,5 @@
 -- @description ReaProfessor action registration (native Extensions menu)
--- @version 0.4.5
+-- @version 0.4.6
 -- @author JewishBidoof
 -- @noindex
 --
@@ -316,9 +316,11 @@ end
 function Menu.find_hub()
   local res = reaper.GetResourcePath()
   local candidates = {
+    reaper.GetExtState("ReaProfessor", HUB_KEY),
     res .. "/Scripts/ReaProfessor/ReaProfessor.lua",
     res .. "/Scripts/Live/ReaProfessor/ReaProfessor.lua",
-    reaper.GetExtState("ReaProfessor", HUB_KEY),
+    res .. "/Scripts/ReaProfessor Scripts/ReaProfessor/ReaProfessor.lua",
+    res .. "/Scripts/ReaProfessor Scripts/Live/ReaProfessor.lua",
   }
   for _, p in ipairs(candidates) do
     p = normalize_path(p)
@@ -326,7 +328,31 @@ function Menu.find_hub()
       return p
     end
   end
-  return nil
+  -- Shallow scan Scripts/ for any ReaProfessor.lua (odd ReaPack layouts).
+  local scripts = res .. "/Scripts"
+  local function walk(dir, depth)
+    if depth < 0 or not reaper.EnumerateFiles then return nil end
+    local i = 0
+    while true do
+      local name = reaper.EnumerateFiles(dir, i)
+      if not name then break end
+      i = i + 1
+      if name == "ReaProfessor.lua" then
+        local p = normalize_path(dir .. "/" .. name)
+        if reaper.file_exists(p) then return p end
+      end
+    end
+    i = 0
+    while true do
+      local name = reaper.EnumerateSubdirectories(dir, i)
+      if not name then break end
+      i = i + 1
+      local found = walk(dir .. "/" .. name, depth - 1)
+      if found then return found end
+    end
+    return nil
+  end
+  return walk(scripts, 4)
 end
 
 return Menu
