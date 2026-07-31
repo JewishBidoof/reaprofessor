@@ -50,4 +50,8 @@ install: all
 	@echo "Built $(TARGET)"
 
 clean:
-	rm -rf $(ROOT)/dist/linux64 $(ROOT)/dist/darwin64 $(ROOT)/dist/darwin-arm64
+	# Only remove built binaries — keep dist/ platform dirs for ReaPack packages.
+	rm -f $(ROOT)/dist/linux64/reaper_reaprofessor*.so \
+	      $(ROOT)/dist/darwin64/reaper_reaprofessor*.dylib \
+	      $(ROOT)/dist/darwin-arm64/reaper_reaprofessor*.dylib \
+	      $(ROOT)/dist/win64/reaper_reaprofessor*.dll
