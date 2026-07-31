@@ -25,9 +25,11 @@ Processing must never alter what hits the multitrack:
 
 | Mode | Capture | Recall |
 | --- | --- | --- |
-| `bypass` | FX enable states (+ mute/solo) | Enable/bypass only |
-| `params` | Bypass + parameter values | Apply params (FX must already exist) |
-| `full` | Full chain identity + params | Delete FX, re-add by name, apply params |
+| `bypass` | Always stores full FXCHAIN + params | Enable/bypass only (auto-rebuilds if chain missing) |
+| `params` | Always stores full FXCHAIN + params | Apply params by FX identity; **rebuilds chain** if plugins differ |
+| `full` | Always stores full FXCHAIN + params | Restore exact FXCHAIN (fallback: AddByName + params) |
+
+Default mode is **full**. Cue `+ CUE` always captures full. The Snapshots UI Recall button uses each snapshot’s own stored mode (does not override with the filter selector).
 
 ## OSC addresses (control service)
 

@@ -1,8 +1,8 @@
--- @description ReaProfessor - Chain Rack
--- @version 0.3.0
+-- @description ReaProfessor - Chains (LiveProfessor-style rack overview)
+-- @version 0.3.8
 -- @author JewishBidoof
 -- @noindex
--- @about Signal-chain overview of tracks and FX order.
+-- @about Horizontal signal-chain overview of tracks and FX order.
 
 local res = reaper.GetResourcePath() .. "/Scripts/ReaProfessor/"
 local src = debug.getinfo(1, "S").source
@@ -15,7 +15,7 @@ local Config = require("config")
 local selected = 0
 local running = true
 
-UI.init("ReaProfessor · Chain Rack", 860, 520, 0)
+UI.init("ReaProfessor · Chains", 960, 560, 0)
 
 local function track_chains()
   local chains = {}
@@ -27,34 +27,57 @@ local function track_chains()
     local fx = {}
     for fi = 0, fx_count - 1 do
       local _, fx_name = reaper.TrackFX_GetFXName(tr, fi, "")
-      -- strip type prefix like "VST3: "
       fx_name = fx_name:gsub("^[^:]+:%s*", "")
       local enabled = reaper.TrackFX_GetEnabled(tr, fi)
-      fx[#fx + 1] = { name = fx_name, enabled = enabled }
+      local typ = ""
+      if reaper.TrackFX_GetNamedConfigParm then
+        local ok, t = reaper.TrackFX_GetNamedConfigParm(tr, fi, "fx_type")
+        if ok then typ = t end
+      end
+      fx[#fx + 1] = { name = fx_name, enabled = enabled, typ = typ, index = fi }
     end
     local mute = reaper.GetMediaTrackInfo_Value(tr, "B_MUTE") > 0
     local solo = reaper.GetMediaTrackInfo_Value(tr, "I_SOLO") > 0
+    local _, role = reaper.GetSetMediaTrackInfo_String(tr, "P_EXT:ReaProfessor_role", "", false)
     chains[#chains + 1] = {
       index = i,
       name = name,
       fx = fx,
       mute = mute,
       solo = solo,
+      role = role,
       track = tr,
     }
   end
   return chains
 end
 
+local function draw_node(x, y, nw, nh, title, sub, opts)
+  opts = opts or {}
+  local bg = opts.bg or UI.colors.panel
+  UI.fill_rect(x, y, nw, nh, bg)
+  UI.stroke_rect(x, y, nw, nh, opts.border or UI.colors.border)
+  if opts.accent then
+    UI.fill_rect(x, y, nw, 3, opts.accent)
+  end
+  gfx.setfont(1)
+  UI.label(x + 10, y + 10, title, UI.colors.text)
+  if sub and sub ~= "" then
+    gfx.setfont(3)
+    UI.label(x + 10, y + 32, sub, UI.colors.muted)
+  end
+  if opts.power ~= nil then
+    local pc = opts.power and UI.colors.go or UI.colors.pip_off
+    UI.fill_rect(x + nw - 22, y + 10, 12, 12, pc)
+  end
+end
+
 local function draw()
   local w, h = gfx.w, gfx.h
   UI.fill_rect(0, 0, w, h, UI.colors.bg)
-  gfx.setfont(2)
-  UI.label(16, 14, "CHAIN RACK", UI.colors.accent)
-  gfx.setfont(3)
-  UI.label(180, 22, "Each track is a signal chain  ·  click to select  ·  double-click opens FX", UI.colors.muted)
+  UI.header_bar(w, "Chains", "Each track is a signal chain  ·  click selects  ·  double-click opens FX")
 
-  if UI.button("addtr", w - 150, 12, 138, 36, "+ Chain") then
+  if UI.button("addtr", w - 140, 10, 124, 28, "+ Chain", { bg = UI.colors.go, fg = UI.colors.go_fg }) then
     if not Config.actions_enabled() then
       Config.deny_action("Add Chain")
     else
@@ -66,7 +89,9 @@ local function draw()
 
   local chains = track_chains()
   local y = 64
-  local card_h = 72
+  local row_h = 100
+  local node_w, node_h = 168, 72
+  local gap = 28
 
   if #chains == 0 then
     gfx.setfont(1)
@@ -74,42 +99,77 @@ local function draw()
   end
 
   for i, chain in ipairs(chains) do
-    if y + card_h > h - 20 then break end
-    local bg = (selected == i) and UI.colors.selected or UI.colors.panel
-    UI.fill_rect(12, y, w - 24, card_h - 8, bg)
-    UI.stroke_rect(12, y, w - 24, card_h - 8, UI.colors.border)
+    if y + row_h > h - 12 then break end
+    local row_bg = (selected == i) and {0.10, 0.12, 0.14} or UI.colors.bg
+    UI.fill_rect(0, y, w, row_h - 8, row_bg)
+    if selected == i then
+      UI.fill_rect(0, y, 3, row_h - 8, UI.colors.accent)
+    end
 
-    local hit = gfx.mouse_x >= 12 and gfx.mouse_x <= w - 12
-            and gfx.mouse_y >= y and gfx.mouse_y <= y + card_h - 8
-    if hit and gfx.mouse_cap & 1 == 1 then
-      if selected == i and (UI._last_click_i == i) and (reaper.time_precise() - (UI._last_click_t or 0) < 0.35) then
-        reaper.TrackFX_Show(chain.track, 0, 1) -- show chain
-      end
+    local x = 16
+    local accent = (selected == i) and UI.colors.accent or nil
+    local sub = chain.role ~= "" and chain.role or ((#chain.fx) .. " plugins")
+    if chain.mute then sub = sub .. " · MUTE" end
+    if chain.solo then sub = sub .. " · SOLO" end
+    draw_node(x, y + 10, node_w, node_h, chain.name or ("Chain " .. i), sub, {
+      accent = accent,
+      power = not chain.mute,
+      bg = UI.colors.panel2,
+    })
+
+    local hit_header = gfx.mouse_x >= x and gfx.mouse_x <= x + node_w
+                   and gfx.mouse_y >= y + 10 and gfx.mouse_y <= y + 10 + node_h
+    if hit_header and gfx.mouse_cap & 1 == 1 then
       selected = i
       reaper.SetOnlyTrackSelected(chain.track)
-      UI._last_click_i = i
-      UI._last_click_t = reaper.time_precise()
     end
 
-    gfx.setfont(1)
-    local status = ""
-    if chain.mute then status = status .. " MUTE" end
-    if chain.solo then status = status .. " SOLO" end
-    UI.label(24, y + 10, string.format("%02d  %s", i, chain.name), UI.colors.text)
-    if status ~= "" then
-      UI.label(w - 120, y + 10, status, UI.colors.danger)
+    x = x + node_w + gap
+    for fi, fx in ipairs(chain.fx) do
+      if x + node_w > w - 20 then
+        gfx.setfont(3)
+        UI.label(x, y + 40, "+" .. (#chain.fx - fi + 1) .. " more", UI.colors.muted)
+        break
+      end
+      -- Connector +
+      UI.fill_rect(x - gap / 2 - 8, y + 10 + node_h / 2 - 8, 16, 16, UI.colors.panel)
+      UI.stroke_rect(x - gap / 2 - 8, y + 10 + node_h / 2 - 8, 16, 16, UI.colors.border)
+      gfx.setfont(3)
+      UI.label(x - gap / 2 - 4, y + 10 + node_h / 2 - 6, "+", UI.colors.muted)
+
+      local typ = fx.typ ~= "" and fx.typ or "FX"
+      draw_node(x, y + 10, node_w, node_h, fx.name, typ, {
+        power = fx.enabled,
+        bg = fx.enabled and UI.colors.panel or UI.colors.row_alt,
+      })
+
+      local hit = gfx.mouse_x >= x and gfx.mouse_x <= x + node_w
+              and gfx.mouse_y >= y + 10 and gfx.mouse_y <= y + 10 + node_h
+      if hit and gfx.mouse_cap & 1 == 1 then
+        selected = i
+        reaper.SetOnlyTrackSelected(chain.track)
+        if UI._last_fx == (i .. ":" .. fi) and (reaper.time_precise() - (UI._last_fx_t or 0) < 0.35) then
+          reaper.TrackFX_Show(chain.track, fx.index, 3)
+          UI._last_fx_t = 0
+        else
+          UI._last_fx = i .. ":" .. fi
+          UI._last_fx_t = reaper.time_precise()
+        end
+      end
+      x = x + node_w + gap
     end
 
-    gfx.setfont(3)
-    local fx_line = {}
-    for _, fx in ipairs(chain.fx) do
-      local label = fx.enabled and fx.name or ("[" .. fx.name .. "]")
-      fx_line[#fx_line + 1] = label
+    -- Trailing + to add FX via REAPER
+    if x + 40 < w then
+      if UI.button("addfx" .. i, x - gap / 2 - 8, y + 10 + node_h / 2 - 8, 16, 16, "+", { bg = UI.colors.panel2 }) then
+        if Config.actions_enabled() then
+          reaper.SetOnlyTrackSelected(chain.track)
+          reaper.Main_OnCommand(40271, 0) -- FX: Show/hide track FX for selected tracks
+        end
+      end
     end
-    local line = #fx_line > 0 and table.concat(fx_line, "  →  ") or "(empty chain)"
-    UI.label(40, y + 38, line, UI.colors.muted)
 
-    y = y + card_h
+    y = y + row_h
   end
 
   local ch = gfx.getchar()

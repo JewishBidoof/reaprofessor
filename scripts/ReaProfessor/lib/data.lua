@@ -1,5 +1,5 @@
 -- @description ReaProfessor ExtState data helpers
--- @version 0.3.7
+-- @version 0.3.8
 -- @author JewishBidoof
 -- @noindex
 
@@ -12,10 +12,12 @@ local META_KEY = "meta_json"
 local MIDI_KEY = "midi_map_json"
 local OSC_KEY = "osc_map_json"
 
--- Snapshot recall modes:
+-- Snapshot recall modes (stored preference / recall filter):
 --   bypass  = only FX enable/bypass (+ mute/solo)
---   params  = bypass + normalized parameter values (matched by FX identity)
+--   params  = bypass + normalized parameter values (matched by FX identity);
+--             auto-upgrades to full rebuild when the chain no longer matches
 --   full    = restore exact FXCHAIN chunk (fallback: rebuild by name + params)
+-- Capture always stores full FXCHAIN + params so recall cannot lose data.
 Data.SNAPSHOT_MODES = { "bypass", "params", "full" }
 
 local function json_escape(s)
@@ -173,13 +175,13 @@ function Data.load_meta()
     meta = {
       cue_index = 1,
       live_mode = false,
-      version = "0.2.0",
-      snapshot_mode = "params",
+      version = "0.3.8",
+      snapshot_mode = "full",
       channel_mode = "same_strip",
       selected_only = false,
     }
   end
-  if not meta.snapshot_mode then meta.snapshot_mode = "params" end
+  if not meta.snapshot_mode then meta.snapshot_mode = "full" end
   if not meta.channel_mode then meta.channel_mode = "same_strip" end
   return meta
 end
@@ -319,7 +321,8 @@ local function fx_add_candidates(fx)
   return list
 end
 
-local function capture_fx(tr, fi, mode)
+local function capture_fx(tr, fi, _mode)
+  -- Always capture full FX identity + params; mode is a recall filter only.
   local _, fx_name = reaper.TrackFX_GetFXName(tr, fi, "")
   local bypassed = reaper.TrackFX_GetEnabled(tr, fi) == false
   local offline = false
@@ -338,7 +341,6 @@ local function capture_fx(tr, fi, mode)
     local ok2, ident = reaper.TrackFX_GetNamedConfigParm(tr, fi, "fx_ident")
     if ok2 then entry.fx_ident = ident end
   end
-  if mode == "bypass" then return entry end
 
   local params = {}
   local pc = reaper.TrackFX_GetNumParams(tr, fi)
@@ -366,14 +368,23 @@ local function iter_snapshot_tracks(selected_only)
 end
 
 --- Capture snapshot.
+-- Always stores FXCHAIN + normalized params. `mode` is the preferred recall filter.
 -- @param name string
 -- @param opts { mode="bypass"|"params"|"full", selected_only=bool }
 function Data.capture_snapshot(name, opts)
   opts = opts or {}
   local meta = Data.load_meta()
-  local mode = opts.mode or meta.snapshot_mode or "params"
+  local mode = opts.mode or meta.snapshot_mode or "full"
   local selected_only = opts.selected_only
   if selected_only == nil then selected_only = meta.selected_only end
+  -- Nothing selected with selected_only → capture all eligible (avoid empty snap).
+  if selected_only then
+    local any = false
+    for i = 0, reaper.CountTracks(0) - 1 do
+      if reaper.IsTrackSelected(reaper.GetTrack(0, i)) then any = true break end
+    end
+    if not any then selected_only = false end
+  end
 
   local tracks = {}
   for _, target in ipairs(iter_snapshot_tracks(selected_only)) do
@@ -392,12 +403,10 @@ function Data.capture_snapshot(name, opts)
       solo = reaper.GetMediaTrackInfo_Value(tr, "I_SOLO") > 0,
       fx = fx_list,
     }
-    -- Full mode: also store exact FXCHAIN chunk (authoritative for JSFX/VST state).
-    if mode == "full" then
-      local ok, chunk = reaper.GetTrackStateChunk(tr, "", false)
-      if ok and chunk then
-        row.fxchain = extract_chunk_block(chunk, "FXCHAIN")
-      end
+    -- Always store exact FXCHAIN so recall can rebuild even if filter is params/bypass.
+    local ok, chunk = reaper.GetTrackStateChunk(tr, "", false)
+    if ok and chunk then
+      row.fxchain = extract_chunk_block(chunk, "FXCHAIN")
     end
     tracks[#tracks + 1] = row
   end
@@ -452,6 +461,30 @@ local function fx_identity_key(fx)
   return tostring(fx.name or ""):gsub("^[^:]+:%s*", ""):lower()
 end
 
+local function live_fx_key(tr, fi)
+  local _, name = reaper.TrackFX_GetFXName(tr, fi, "")
+  local ident = ""
+  if reaper.TrackFX_GetNamedConfigParm then
+    local ok, id = reaper.TrackFX_GetNamedConfigParm(tr, fi, "fx_ident")
+    if ok then ident = id end
+  end
+  if ident ~= "" then return ident:lower() end
+  return name:gsub("^[^:]+:%s*", ""):lower()
+end
+
+--- True when track FX order/identity no longer matches the snapshot (needs rebuild).
+local function needs_chain_rebuild(tr, src)
+  if type(src.fx) ~= "table" then return false end
+  local live_n = reaper.TrackFX_GetCount(tr)
+  if live_n ~= #src.fx then return true end
+  for si = 1, #src.fx do
+    if live_fx_key(tr, si - 1) ~= fx_identity_key(src.fx[si]) then
+      return true
+    end
+  end
+  return false
+end
+
 local function recall_track_bypass_or_params(tr, src, mode)
   if src.mute ~= nil then
     reaper.SetMediaTrackInfo_Value(tr, "B_MUTE", src.mute and 1 or 0)
@@ -470,14 +503,7 @@ local function recall_track_bypass_or_params(tr, src, mode)
     -- Prefer identity match over positional (survives reorder)
     for fi = 0, fx_count - 1 do
       if not used[fi] then
-        local _, name = reaper.TrackFX_GetFXName(tr, fi, "")
-        local ident = ""
-        if reaper.TrackFX_GetNamedConfigParm then
-          local ok, id = reaper.TrackFX_GetNamedConfigParm(tr, fi, "fx_ident")
-          if ok then ident = id end
-        end
-        local key = ident ~= "" and ident:lower() or name:gsub("^[^:]+:%s*", ""):lower()
-        if key == want_key then
+        if live_fx_key(tr, fi) == want_key then
           matched = fi
           break
         end
@@ -571,15 +597,30 @@ local function find_track_for_src(src, used)
 end
 
 --- Recall snapshot.
+-- Uses the snapshot's own mode unless opts.mode is explicitly set.
+-- Params/bypass auto-upgrade to full rebuild when the live chain no longer matches
+-- and an FXCHAIN was stored (prevents silent "recall did nothing" after FX edits).
 -- @param snap table
 -- @param opts { mode=override, selected_only=bool }
 function Data.recall_snapshot(snap, opts)
   if not snap or type(snap.tracks) ~= "table" then return false end
   opts = opts or {}
   local meta = Data.load_meta()
-  local mode = opts.mode or snap.mode or meta.snapshot_mode or "params"
+  -- Prefer the mode stored on the snapshot (what was captured for). Explicit opts.mode
+  -- overrides — callers that want the snap's mode must not pass mode.
+  local mode = opts.mode or snap.mode or meta.snapshot_mode or "full"
   local selected_only = opts.selected_only
   if selected_only == nil then selected_only = snap.selected_only end
+  if selected_only then
+    local any = false
+    for i = 0, reaper.CountTracks(0) - 1 do
+      if reaper.IsTrackSelected(reaper.GetTrack(0, i)) then any = true break end
+    end
+    if not any then
+      selected_only = false
+      reaper.ShowConsoleMsg("[ReaProfessor] No tracks selected — recalling all eligible tracks\n")
+    end
+  end
 
   reaper.Undo_BeginBlock2(0)
   local used = {}
@@ -591,8 +632,22 @@ function Data.recall_snapshot(snap, opts)
     if role == "record" then return end
     if selected_only and not reaper.IsTrackSelected(tr) then return end
     used[tr] = true
-    if mode == "full" then
+
+    local do_full = (mode == "full")
+    if not do_full and mode == "params" and type(src.fxchain) == "string"
+       and src.fxchain:find("<FXCHAIN", 1, true) and needs_chain_rebuild(tr, src) then
+      do_full = true
+    end
+    -- Legacy params snaps without fxchain but with fx list: rebuild via AddByName
+    if not do_full and mode == "params" and needs_chain_rebuild(tr, src)
+       and type(src.fx) == "table" and #src.fx > 0 then
+      do_full = true
+    end
+
+    if do_full then
       recall_track_full(tr, src)
+      -- If the preferred filter was bypass after a forced rebuild, re-apply enables only
+      -- would wipe params — keep full result (correct show behavior).
     else
       recall_track_bypass_or_params(tr, src, mode)
     end

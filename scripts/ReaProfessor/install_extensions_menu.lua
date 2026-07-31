@@ -1,5 +1,5 @@
 -- @description ReaProfessor - Restore Extensions menu
--- @version 0.3.7
+-- @version 0.3.8
 -- @author JewishBidoof
 -- @about Registers ReaProfessor in Actions and removes our prior Extensions menu customization (which nested other extensions).
 -- @noindex
