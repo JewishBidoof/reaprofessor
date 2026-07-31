@@ -372,6 +372,36 @@
         <source type="extension" platform="linux64" file="reaper_reaprofessor-x86_64.so">https://github.com/JewishBidoof/reaprofessor/raw/9d83fad95496f2fc12ae77599b6b55144d5bee32/dist/linux64/reaper_reaprofessor-x86_64.so</source>
         <source type="extension" platform="darwin-arm64" file="reaper_reaprofessor.dylib">https://github.com/JewishBidoof/reaprofessor/raw/9d83fad95496f2fc12ae77599b6b55144d5bee32/dist/darwin-arm64/reaper_reaprofessor.dylib</source>
       </version>
+      <version name="0.4.5" author="JewishBidoof" time="2026-07-31T20:34:19Z">
+        <changelog><![CDATA[+ Fix Extensions → ReaProfessor still not opening the hub
++ Defer ReaScript launch via timer; register command_id like ReaPack]]></changelog>
+        <source main="main" file="ReaProfessor/ReaProfessor.lua">https://github.com/JewishBidoof/reaprofessor/raw/f98e85e97eee37c0aac9c3a55e0e4401dd8e430a/scripts/ReaProfessor/ReaProfessor.lua</source>
+        <source main="main" file="ReaProfessor/install_extensions_menu.lua">https://github.com/JewishBidoof/reaprofessor/raw/f98e85e97eee37c0aac9c3a55e0e4401dd8e430a/scripts/ReaProfessor/install_extensions_menu.lua</source>
+        <source main="main" file="ReaProfessor/cue_list.lua">https://github.com/JewishBidoof/reaprofessor/raw/f98e85e97eee37c0aac9c3a55e0e4401dd8e430a/scripts/ReaProfessor/cue_list.lua</source>
+        <source main="main" file="ReaProfessor/snapshots.lua">https://github.com/JewishBidoof/reaprofessor/raw/f98e85e97eee37c0aac9c3a55e0e4401dd8e430a/scripts/ReaProfessor/snapshots.lua</source>
+        <source main="main" file="ReaProfessor/chain_rack.lua">https://github.com/JewishBidoof/reaprofessor/raw/f98e85e97eee37c0aac9c3a55e0e4401dd8e430a/scripts/ReaProfessor/chain_rack.lua</source>
+        <source main="main" file="ReaProfessor/navigator.lua">https://github.com/JewishBidoof/reaprofessor/raw/f98e85e97eee37c0aac9c3a55e0e4401dd8e430a/scripts/ReaProfessor/navigator.lua</source>
+        <source main="main" file="ReaProfessor/create_channels.lua">https://github.com/JewishBidoof/reaprofessor/raw/f98e85e97eee37c0aac9c3a55e0e4401dd8e430a/scripts/ReaProfessor/create_channels.lua</source>
+        <source main="main" file="ReaProfessor/live_mode.lua">https://github.com/JewishBidoof/reaprofessor/raw/f98e85e97eee37c0aac9c3a55e0e4401dd8e430a/scripts/ReaProfessor/live_mode.lua</source>
+        <source main="main" file="ReaProfessor/control_panel.lua">https://github.com/JewishBidoof/reaprofessor/raw/f98e85e97eee37c0aac9c3a55e0e4401dd8e430a/scripts/ReaProfessor/control_panel.lua</source>
+        <source main="main" file="ReaProfessor/control_service.lua">https://github.com/JewishBidoof/reaprofessor/raw/f98e85e97eee37c0aac9c3a55e0e4401dd8e430a/scripts/ReaProfessor/control_service.lua</source>
+        <source main="main" file="ReaProfessor/mapping.lua">https://github.com/JewishBidoof/reaprofessor/raw/f98e85e97eee37c0aac9c3a55e0e4401dd8e430a/scripts/ReaProfessor/mapping.lua</source>
+        <source file="ReaProfessor/startup_hook.lua">https://github.com/JewishBidoof/reaprofessor/raw/f98e85e97eee37c0aac9c3a55e0e4401dd8e430a/scripts/ReaProfessor/startup_hook.lua</source>
+        <source file="ReaProfessor/lib/commands.lua">https://github.com/JewishBidoof/reaprofessor/raw/f98e85e97eee37c0aac9c3a55e0e4401dd8e430a/scripts/ReaProfessor/lib/commands.lua</source>
+        <source file="ReaProfessor/lib/config.lua">https://github.com/JewishBidoof/reaprofessor/raw/f98e85e97eee37c0aac9c3a55e0e4401dd8e430a/scripts/ReaProfessor/lib/config.lua</source>
+        <source file="ReaProfessor/lib/data.lua">https://github.com/JewishBidoof/reaprofessor/raw/f98e85e97eee37c0aac9c3a55e0e4401dd8e430a/scripts/ReaProfessor/lib/data.lua</source>
+        <source file="ReaProfessor/lib/menu.lua">https://github.com/JewishBidoof/reaprofessor/raw/f98e85e97eee37c0aac9c3a55e0e4401dd8e430a/scripts/ReaProfessor/lib/menu.lua</source>
+        <source file="ReaProfessor/lib/nav.lua">https://github.com/JewishBidoof/reaprofessor/raw/f98e85e97eee37c0aac9c3a55e0e4401dd8e430a/scripts/ReaProfessor/lib/nav.lua</source>
+        <source file="ReaProfessor/lib/midi.lua">https://github.com/JewishBidoof/reaprofessor/raw/f98e85e97eee37c0aac9c3a55e0e4401dd8e430a/scripts/ReaProfessor/lib/midi.lua</source>
+        <source file="ReaProfessor/lib/osc.lua">https://github.com/JewishBidoof/reaprofessor/raw/f98e85e97eee37c0aac9c3a55e0e4401dd8e430a/scripts/ReaProfessor/lib/osc.lua</source>
+        <source file="ReaProfessor/lib/path.lua">https://github.com/JewishBidoof/reaprofessor/raw/f98e85e97eee37c0aac9c3a55e0e4401dd8e430a/scripts/ReaProfessor/lib/path.lua</source>
+        <source file="ReaProfessor/lib/routing.lua">https://github.com/JewishBidoof/reaprofessor/raw/f98e85e97eee37c0aac9c3a55e0e4401dd8e430a/scripts/ReaProfessor/lib/routing.lua</source>
+        <source file="ReaProfessor/lib/ui.lua">https://github.com/JewishBidoof/reaprofessor/raw/f98e85e97eee37c0aac9c3a55e0e4401dd8e430a/scripts/ReaProfessor/lib/ui.lua</source>
+        <source type="data" file="ReaProfessor.ReaperOSC">https://github.com/JewishBidoof/reaprofessor/raw/f98e85e97eee37c0aac9c3a55e0e4401dd8e430a/resources/osc/ReaProfessor.ReaperOSC</source>
+        <source type="extension" platform="linux64" file="reaper_reaprofessor-x86_64.so">https://github.com/JewishBidoof/reaprofessor/raw/f98e85e97eee37c0aac9c3a55e0e4401dd8e430a/dist/linux64/reaper_reaprofessor-x86_64.so</source>
+        <source type="extension" platform="darwin-arm64" file="reaper_reaprofessor.dylib">https://github.com/JewishBidoof/reaprofessor/raw/f98e85e97eee37c0aac9c3a55e0e4401dd8e430a/dist/darwin-arm64/reaper_reaprofessor.dylib</source>
+        <source type="extension" platform="win64" file="reaper_reaprofessor64.dll">https://github.com/JewishBidoof/reaprofessor/raw/f98e85e97eee37c0aac9c3a55e0e4401dd8e430a/dist/win64/reaper_reaprofessor64.dll</source>
+      </version>
       <version name="0.4.4" author="JewishBidoof" time="2026-07-31T20:23:51Z">
         <changelog><![CDATA[+ Fix Extensions → ReaProfessor not opening the hub
 + Menu invokes ReaScript command; custom_action uses hookcommand2]]></changelog>
@@ -454,7 +484,7 @@ docs/                   Feature map + architecture\line
 tests/                  Automated REAPER script checks\line
 .cursor/                Cloud agent environment config\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 Status\par}
-{\pard \ql \f0 \sa180 \li0 \fi0 Active development (v0.4.4):\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Active development (v0.4.5):\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Full snapshot recall restores complete multi-FX / JSFX chains (FXCHAIN nesting fix)\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Params snapshots use normalized values and match FX by identity\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Extensions \u8594 ? ReaProfessor flat shortcut (ReaPack/SWS stay top-level) + Actions list\par}
