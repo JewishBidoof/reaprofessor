@@ -1,5 +1,5 @@
 -- @description ReaProfessor central command handlers
--- @version 0.3.3
+-- @version 0.3.9
 -- @author JewishBidoof
 -- @noindex
 
@@ -57,28 +57,112 @@ local function find_snapshot(snaps, key)
 end
 
 --- Fire one cue. Returns ok, status_message.
-local function fire_cue(cue, snaps)
-  if not cue then return false, "No cue" end
-  if cue.kind == "snapshot" or cue.kind == nil or cue.kind == "" then
-    local Data = require("data")
-    local key = cue.payload and cue.payload.snapshot
-    if (not key or key == "") and cue.name then key = cue.name end
+-- LP2 model: a cue is a container; all actions fire (fire_all) or just the first.
+local function fire_action(act, snaps)
+  if not act then return false, "No action" end
+  local Data = require("data")
+  if act.kind == "snapshot" then
+    local key = act.snapshot or act.label
     local snap = select(1, find_snapshot(snaps, key))
     if not snap then
       return false, string.format("Missing snapshot '%s' — capture one or re-link this cue", tostring(key or "?"))
     end
     Data.recall_snapshot(snap)
-    return true, "Recalled " .. tostring(snap.name)
-  elseif cue.kind == "action" then
-    local cmd = cue.payload and cue.payload.command_id
-    if not cmd then return false, "Cue has no action id" end
+    local meta = Data.load_meta()
+    meta.last_snapshot = snap.name
+    Data.save_meta(meta)
+    return true, "Snapshot " .. tostring(snap.name)
+  elseif act.kind == "action" then
+    local cmd = act.command_id
+    if not cmd then return false, "Action has no command id" end
     local id = reaper.NamedCommandLookup(tostring(cmd))
     if id == 0 then id = tonumber(cmd) or 0 end
     if id == 0 then return false, "Unknown action " .. tostring(cmd) end
     reaper.Main_OnCommand(id, 0)
-    return true, "Ran action " .. tostring(cmd)
+    return true, "Action " .. tostring(cmd)
+  elseif act.kind == "midi" then
+    -- Soft MIDI out via StuffMIDIMessage when available (channel 0-15)
+    local ch = (tonumber(act.channel) or 1) - 1
+    if ch < 0 then ch = 0 end
+    if ch > 15 then ch = 15 end
+    local note = tonumber(act.note) or 36
+    local vel = tonumber(act.velocity) or 100
+    local status = 0x90 + ch
+    if act.type == "cc" then
+      status = 0xB0 + ch
+      note = tonumber(act.cc) or note
+    elseif act.type == "note_off" then
+      status = 0x80 + ch
+    end
+    if reaper.StuffMIDIMessage then
+      reaper.StuffMIDIMessage(0, status, note, vel)
+      return true, "MIDI"
+    end
+    return false, "StuffMIDIMessage unavailable"
+  elseif act.kind == "comment" then
+    return true, act.label or "Comment"
   end
-  return false, "Unknown cue kind: " .. tostring(cue.kind)
+  return false, "Unknown action kind: " .. tostring(act.kind)
+end
+
+local function fire_cue(cue, snaps)
+  if not cue then return false, "No cue" end
+  local Data = require("data")
+  cue = Data.normalize_cue(cue)
+
+  -- Optional pre-wait (blocking sleep kept short; long waits use defer in UI later)
+  local pre = tonumber(cue.pre_wait_ms) or 0
+  if pre > 0 and pre <= 2000 then
+    local t0 = reaper.time_precise()
+    while (reaper.time_precise() - t0) * 1000 < pre do end
+  end
+
+  local actions = cue.actions or {}
+  if #actions == 0 then
+    return false, "Cue has no actions — add a Snapshot action"
+  end
+
+  local msgs = {}
+  local any_ok = false
+  local limit = cue.fire_all == false and 1 or #actions
+  for i = 1, limit do
+    local ok, msg = fire_action(actions[i], snaps)
+    if ok then any_ok = true end
+    msgs[#msgs + 1] = msg
+    if not ok and cue.fire_all ~= false then
+      -- continue firing remaining actions (LP fires all; report failures)
+    end
+  end
+
+  local post = tonumber(cue.post_wait_ms) or 0
+  if post > 0 and post <= 2000 then
+    local t0 = reaper.time_precise()
+    while (reaper.time_precise() - t0) * 1000 < post do end
+  end
+
+  if not any_ok then
+    return false, table.concat(msgs, "; ")
+  end
+  return true, table.concat(msgs, " · ")
+end
+
+--- After recalling a snapshot, optionally fire a linked cue (LP "Fire cue").
+function Commands.snap_fire_linked_cue(snap)
+  if not snap or not snap.fire_cue or snap.fire_cue == "" then return true, nil end
+  local Data = require("data")
+  local cues = Data.load_cues()
+  local snaps = Data.load_snapshots()
+  local idx = tonumber(snap.fire_cue)
+  local cue = nil
+  if idx and cues[idx] then
+    cue = cues[idx]
+  else
+    for _, c in ipairs(cues) do
+      if c.name == snap.fire_cue then cue = c break end
+    end
+  end
+  if not cue then return false, "Linked cue missing: " .. tostring(snap.fire_cue) end
+  return fire_cue(cue, snaps)
 end
 
 --- Block show/project mutations until Config.FINALIZED (smoke may flip the flag).
@@ -137,7 +221,14 @@ function Commands.snap_recall(key)
   local snaps = Data.load_snapshots()
   local snap = select(1, find_snapshot(snaps, key))
   if not snap then return false end
-  return Data.recall_snapshot(snap)
+  local ok = Data.recall_snapshot(snap)
+  if ok then
+    local meta = Data.load_meta()
+    meta.last_snapshot = snap.name
+    Data.save_meta(meta)
+    Commands.snap_fire_linked_cue(snap)
+  end
+  return ok
 end
 
 function Commands.set_snapshot_mode(mode)

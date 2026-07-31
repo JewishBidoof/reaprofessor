@@ -67,15 +67,13 @@ tests/                  Automated REAPER script checks
 
 ## Status
 
-Active development (v0.3.8):
+Active development (v0.3.9):
 
-- Snapshot recall fixed for real show use: always stores FXCHAIN; Recall uses snap mode; params auto-rebuilds
-- `+ CUE` captures **full** FX state; default snapshot mode is full
-- LiveProfessor-inspired UI (Cue List GO NEXT, Global Snapshots, Chains)
-- Full snapshot recall restores complete multi-FX / JSFX chains
-- Actions-list entry only — does **not** customize Extensions (keeps ReaPack/SWS top-level)
-- Hub button **Restore Extensions menu** undoes any prior nesting from older builds
-- Show/project actions enabled
+- LiveProfessor 2–style Cue List: nested actions, tool palette (Q/S/M), inspector (fade/pre/post), GO NEXT
+- Navigator plugin overview; Live Mode perform surface (next/on-deck + chains)
+- Global Snapshots: Options → fire cue on recall, color tags, update/recall toolbar
+- Snapshot recall stores full FXCHAIN; params auto-rebuilds; `+`/S tools capture full
+- Actions-list entry only — does **not** customize Extensions
 - 1:1 channel creator, custom MIDI/OSC mapping
 - ReaPack metapackage under `Live/ReaProfessor.lua` (auto-publish workflow remains disabled)
 

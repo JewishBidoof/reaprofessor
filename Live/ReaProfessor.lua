@@ -1,5 +1,5 @@
 -- @description ReaProfessor
--- @version 0.3.8
+-- @version 0.3.9
 -- @author JewishBidoof
 -- @metapackage
 -- @provides
@@ -8,6 +8,7 @@
 --   [main] ../scripts/ReaProfessor/cue_list.lua > ReaProfessor/cue_list.lua
 --   [main] ../scripts/ReaProfessor/snapshots.lua > ReaProfessor/snapshots.lua
 --   [main] ../scripts/ReaProfessor/chain_rack.lua > ReaProfessor/chain_rack.lua
+--   [main] ../scripts/ReaProfessor/navigator.lua > ReaProfessor/navigator.lua
 --   [main] ../scripts/ReaProfessor/create_channels.lua > ReaProfessor/create_channels.lua
 --   [main] ../scripts/ReaProfessor/live_mode.lua > ReaProfessor/live_mode.lua
 --   [main] ../scripts/ReaProfessor/control_panel.lua > ReaProfessor/control_panel.lua
@@ -25,10 +26,9 @@
 --   [nomain] ../scripts/ReaProfessor/lib/ui.lua > ReaProfessor/lib/ui.lua
 --   [data] ../resources/osc/ReaProfessor.ReaperOSC > ReaProfessor.ReaperOSC
 -- @changelog
---   + Fix recall: UI uses snap mode; default full; always store FXCHAIN; params auto-rebuilds
---   + + CUE captures full FX; LiveProfessor-inspired Cue/Snapshots/Chains UI
---   + Fix full snapshot recall truncating multi-FX chains (FXCHAIN nesting)
---   + Stop customizing Extensions menu (was nesting ReaPack/SWS); restore stock menu
+--   + LP2 cue list: hierarchical actions, tool palette, inspector (fade/pre/post)
+--   + Navigator view; Live Mode perform surface; snapshots fire-cue link
+--   + Fix recall + LiveProfessor-inspired panels
 -- @about
 --   Live-oriented REAPER toolkit inspired by LiveProfessor 2.
 --   Run Actions → Show action list → ReaProfessor.

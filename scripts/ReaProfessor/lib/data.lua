@@ -1,5 +1,5 @@
 -- @description ReaProfessor ExtState data helpers
--- @version 0.3.8
+-- @version 0.3.9
 -- @author JewishBidoof
 -- @noindex
 
@@ -150,11 +150,113 @@ function Data.load_cues()
   if type(cues) ~= "table" then
     cues = {}
   end
+  for i = 1, #cues do
+    cues[i] = Data.normalize_cue(cues[i])
+  end
   return cues
 end
 
 function Data.save_cues(cues)
   proj_ext_set(CUES_KEY, Data.encode(cues))
+end
+
+--- Normalize a cue to LP2 shape: container with nested actions + timing fields.
+-- Legacy flat cues (kind=snapshot/action + payload) are upgraded in place.
+function Data.normalize_cue(cue)
+  if type(cue) ~= "table" then
+    cue = { name = "Cue", actions = {} }
+  end
+  if type(cue.actions) ~= "table" then
+    cue.actions = {}
+    local key = cue.payload and cue.payload.snapshot
+    if cue.kind == "snapshot" or (key and key ~= "") or (cue.kind == nil and cue.name) then
+      local snap_name = key
+      if not snap_name or snap_name == "" then snap_name = cue.name end
+      if snap_name and snap_name ~= "" then
+        cue.actions[#cue.actions + 1] = {
+          kind = "snapshot",
+          snapshot = snap_name,
+          label = snap_name,
+        }
+      end
+    end
+    if cue.kind == "action" and cue.payload and cue.payload.command_id then
+      cue.actions[#cue.actions + 1] = {
+        kind = "action",
+        command_id = cue.payload.command_id,
+        label = "Action " .. tostring(cue.payload.command_id),
+      }
+    end
+  end
+  if cue.fire_all == nil then cue.fire_all = true end
+  if cue.expanded == nil then cue.expanded = true end
+  if cue.fade_ms == nil then cue.fade_ms = 0 end
+  if cue.pre_wait_ms == nil then cue.pre_wait_ms = 0 end
+  if cue.post_wait_ms == nil then cue.post_wait_ms = 0 end
+  if cue.trigger_midi == nil then cue.trigger_midi = false end
+  -- Keep legacy fields in sync with first snapshot action for older callers
+  local first_snap = nil
+  for _, a in ipairs(cue.actions) do
+    if a.kind == "snapshot" then first_snap = a break end
+  end
+  if first_snap then
+    cue.kind = cue.kind or "snapshot"
+    cue.payload = cue.payload or {}
+    cue.payload.snapshot = first_snap.snapshot or first_snap.label
+  elseif not cue.kind or cue.kind == "" then
+    cue.kind = "group"
+  end
+  return cue
+end
+
+--- Create an empty LP2-style cue container.
+function Data.new_cue(name)
+  return Data.normalize_cue({
+    id = Data.new_id("cue"),
+    name = name or "Cue",
+    kind = "group",
+    actions = {},
+    fire_all = true,
+    expanded = true,
+    fade_ms = 0,
+    pre_wait_ms = 0,
+    post_wait_ms = 0,
+  })
+end
+
+function Data.format_ms(ms)
+  ms = tonumber(ms) or 0
+  if ms < 0 then ms = 0 end
+  local total_cs = math.floor(ms / 10 + 0.5) -- centiseconds
+  local cs = total_cs % 100
+  local total_s = math.floor(total_cs / 100)
+  local s = total_s % 60
+  local m = math.floor(total_s / 60) % 60
+  local h = math.floor(total_s / 3600)
+  if h > 0 then
+    return string.format("%02d:%02d:%02d:%02d", h, m, s, cs)
+  end
+  return string.format("%02d:%02d:%02d", m, s, cs)
+end
+
+function Data.parse_time_input(str)
+  if not str or str == "" then return 0 end
+  str = tostring(str):match("^%s*(.-)%s*$")
+  -- plain milliseconds
+  if str:match("^%d+$") then return tonumber(str) or 0 end
+  local parts = {}
+  for p in str:gmatch("%d+") do parts[#parts + 1] = tonumber(p) or 0 end
+  if #parts == 1 then return parts[1] end -- treat as ms
+  if #parts == 2 then -- mm:ss
+    return (parts[1] * 60 + parts[2]) * 1000
+  end
+  if #parts == 3 then -- mm:ss:cs
+    return (parts[1] * 60 + parts[2]) * 1000 + parts[3] * 10
+  end
+  if #parts >= 4 then -- hh:mm:ss:cs
+    return ((parts[1] * 3600 + parts[2] * 60 + parts[3]) * 1000) + parts[4] * 10
+  end
+  return 0
 end
 
 function Data.load_snapshots()
@@ -175,10 +277,11 @@ function Data.load_meta()
     meta = {
       cue_index = 1,
       live_mode = false,
-      version = "0.3.8",
+      version = "0.3.9",
       snapshot_mode = "full",
       channel_mode = "same_strip",
       selected_only = false,
+      last_snapshot = "",
     }
   end
   if not meta.snapshot_mode then meta.snapshot_mode = "full" end
