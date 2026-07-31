@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build
-        run: make -C native OS=Linux
+        run: make -C native OS=Linux clean all
       - uses: actions/upload-artifact@v4
         with:
           name: linux64
@@ -26,7 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build
-        run: make -C native OS=Darwin
+        run: make -C native OS=Darwin clean all
       - uses: actions/upload-artifact@v4
         with:
           name: darwin-arm64
