@@ -1,5 +1,5 @@
 -- @description ReaProfessor central command handlers
--- @version 0.5.0
+-- @version 0.5.4
 -- @author JewishBidoof
 -- @noindex
 
@@ -118,9 +118,12 @@ local function fire_cue(cue, snaps, cue_index)
     local osc_path = Data.cue_osc_path(cue, cue_index or meta.cue_index or 1, meta)
     if osc_path and osc_path ~= "" then
       local OSC = require("osc")
-      if OSC.enqueue then OSC.enqueue(osc_path, { 1.0 }) end
-      -- Best-effort: also set ExtState bridge for external OSC senders/monitors.
-      reaper.SetExtState("ReaProfessor", "osc_out", osc_path, false)
+      -- Outbound only — never OSC.enqueue (that is the inbound queue and would re-fire).
+      if OSC.send_out then
+        OSC.send_out(osc_path, { 1.0 })
+      else
+        reaper.SetExtState("ReaProfessor", "osc_out", osc_path, false)
+      end
       msgs[#msgs + 1] = "OSC " .. osc_path
       any_ok = true
     end
