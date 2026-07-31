@@ -1,5 +1,5 @@
 -- @description ReaProfessor ExtState data helpers
--- @version 0.5.0
+-- @version 0.5.3
 -- @author JewishBidoof
 -- @noindex
 
@@ -744,7 +744,7 @@ local function recall_track_full_by_add(tr, src)
     if idx >= 0 then
       apply_bypass_and_params(tr, idx, fx, "full")
     else
-      reaper.ShowConsoleMsg("[ReaProfessor] Full recall: could not add FX '" .. tostring(fx.name or fx.fx_ident) .. "'\n")
+      -- Silent: missing FX is visible in the mixer; avoid console popups mid-show.
     end
   end
 end
@@ -772,9 +772,7 @@ local function recall_track_full(tr, src)
         if want_count == nil or got == want_count then
           return
         end
-        reaper.ShowConsoleMsg(string.format(
-          "[ReaProfessor] Full recall: FXCHAIN apply count mismatch (got %d want %d); rebuilding\n",
-          got, want_count))
+        -- Rebuild via AddByName fallback below; no console spam.
       end
     end
   end
@@ -829,7 +827,7 @@ function Data.recall_snapshot(snap, opts)
     end
     if not any then
       selected_only = false
-      reaper.ShowConsoleMsg("[ReaProfessor] No tracks selected — recalling all eligible tracks\n")
+      -- Fall through to all eligible tracks; no console spam.
     end
   end
 
