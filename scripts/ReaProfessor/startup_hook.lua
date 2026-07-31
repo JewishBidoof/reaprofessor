@@ -1,5 +1,4 @@
--- ReaProfessor startup hook — register Actions + keep Extensions shortcut.
--- Adds a flat Extensions → ReaProfessor item (never a popup/submenu).
+-- ReaProfessor startup hook — register Actions + keep Extensions menu layout.
 
 local res = reaper.GetResourcePath()
 local candidates = {

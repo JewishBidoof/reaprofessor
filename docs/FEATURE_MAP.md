@@ -4,6 +4,7 @@ Target: make REAPER feel like a dedicated live plugin host instead of a studio D
 
 Open via **Extensions → ReaProfessor** or Actions. Child windows use **← Back** to return to the hub.
 Gfx UI is HiDPI-aware (`gfx.ext_retina`).
+Extensions install writes ReaProfessor plus explicit ReaPack / SWS submenus (customizing `[Main extensions]` alone nests hooks under Default menu).
 
 ## Priority 1 — Show control + live I/O (current)
 

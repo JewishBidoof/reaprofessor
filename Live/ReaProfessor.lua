@@ -1,5 +1,5 @@
 -- @description ReaProfessor
--- @version 0.4.0
+-- @version 0.4.1
 -- @author JewishBidoof
 -- @metapackage
 -- @provides
@@ -27,11 +27,10 @@
 --   [nomain] ../scripts/ReaProfessor/lib/ui.lua > ReaProfessor/lib/ui.lua
 --   [data] ../resources/osc/ReaProfessor.ReaperOSC > ReaProfessor.ReaperOSC
 -- @changelog
---   + Restore Extensions → ReaProfessor shortcut (flat item; ReaPack/SWS stay top-level)
---   + In-window ← Back navigation between pages
---   + HiDPI / Retina gfx scaling (crisp on M3 Mac)
---   + LP2 cue list / Navigator / Live Mode
+--   + Extensions menu embeds ReaPack + SWS (avoids Default-menu-only nesting)
+--   + Install/repair rewrites incomplete layouts; clearer quit/reopen guidance
+--   + ← Back navigation; HiDPI gfx; LP2 cue list / Navigator / Live Mode
 -- @about
 --   Live-oriented REAPER toolkit inspired by LiveProfessor 2.
 --   Open via Extensions → ReaProfessor or Actions → ReaProfessor.
---   Flat Extensions item keeps ReaPack/SWS top-level (no submenu nesting).
+--   Extensions layout lists ReaProfessor, ReaPack, and SWS/S&M explicitly.

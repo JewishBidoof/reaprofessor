@@ -1,5 +1,5 @@
 -- @description ReaProfessor
--- @version 0.4.0
+-- @version 0.4.1
 -- @author JewishBidoof
 -- @about Live plugin host toolkit for REAPER (cue lists, snapshots, 1:1 channels, custom MIDI/OSC).
 -- @noindex
@@ -80,11 +80,11 @@ local function draw()
     y = y + 46
   end
 
-  if UI.button("menu", 24, y + 8, bw, 34, "Install Extensions shortcut", { bg = UI.colors.go, fg = UI.colors.go_fg }) then
+  if UI.button("menu", 24, y + 8, bw, 34, "Install / repair Extensions menu", { bg = UI.colors.go, fg = UI.colors.go_fg }) then
     install_menu()
   end
   y = y + 48
-  if UI.button("unmenu", 24, y, bw, 28, "Remove Extensions shortcut", { bg = UI.colors.panel2 }) then
+  if UI.button("unmenu", 24, y, bw, 28, "Remove Extensions customization", { bg = UI.colors.panel2 }) then
     remove_menu_entry()
   end
 
@@ -107,7 +107,7 @@ end
 
 do
   local ok, msg = Menu.ensure(THIS)
-  status = ok and "Actions + Extensions shortcut ready (quit/reopen if new)" or tostring(msg)
+  status = ok and "Actions + Extensions menu ready (quit/reopen if updated)" or tostring(msg)
 end
 
 loop()

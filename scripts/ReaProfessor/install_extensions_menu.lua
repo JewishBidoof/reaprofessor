@@ -1,7 +1,7 @@
 -- @description ReaProfessor - Restore / install Extensions menu entry
--- @version 0.4.0
+-- @version 0.4.1
 -- @author JewishBidoof
--- @about Registers ReaProfessor in Actions and installs Extensions → ReaProfessor (flat item).
+-- @about Registers ReaProfessor in Actions and installs a complete Extensions menu (ReaProfessor + ReaPack + SWS).
 -- @noindex
 
 local res = reaper.GetResourcePath() .. "/Scripts/ReaProfessor/"
@@ -23,7 +23,7 @@ local ok, msg, named, cmd = Menu.install(hub)
 local text
 if ok then
   text = string.format(
-    "%s\n\nAction ID: %s\nCommand: %s\n\nExtensions → ReaProfessor is a flat menu item (not a submenu),\nso ReaPack/SWS stay as separate top-level Extensions entries.\n\nIf the message asks you to quit, use File → Quit, then reopen.",
+    "%s\n\nAction ID: %s\nCommand: %s",
     tostring(msg),
     tostring(named),
     tostring(cmd)

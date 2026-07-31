@@ -67,10 +67,12 @@ tests/                  Automated REAPER script checks
 
 ## Status
 
-Active development (v0.4.0):
+Active development (v0.4.1):
 
-- Extensions → ReaProfessor shortcut restored (flat item so ReaPack/SWS stay top-level)
-- ← Back navigation between hub and pages (no close/reopen)
+- Extensions → ReaProfessor with explicit ReaPack + SWS/S&M submenus (avoids “everything under Default menu”)
+- Hub **Install / repair Extensions menu** rewrites incomplete layouts; quit/reopen once after install
+- If a leftover “Default menu: Main extensions” remains: Customize menus/toolbars → uncheck Include default menu as submenu
+- ← Back navigation between hub and pages
 - HiDPI / Retina gfx scaling for crisp UI on M3 Mac
 - LiveProfessor 2–style Cue List, Navigator, Live Mode, Global Snapshots
 - Snapshot recall stores full FXCHAIN; params auto-rebuilds
