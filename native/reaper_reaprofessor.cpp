@@ -2,9 +2,9 @@
 // Adds Extensions → ReaProfessor via hookcustommenu (coexists with all other
 // extensions). Does NOT touch reaper-menu.ini.
 //
-// Launch: custom_action requires hookcommand2 (not only hookcommand). We also
-// register the hub .lua as a ReaScript action when the file is present so
-// REAPER can run it directly.
+// Launch path mirrors ReaPack/SWS:
+//   command_id + gaccel + hookcommand → one-shot timer → Main_OnCommand(script)
+// custom_action + nested Main_OnCommand from hookcommand2 does not run ReaScripts.
 
 #include "reaper_plugin.h"
 
@@ -26,9 +26,11 @@ static void (*ShowConsoleMsg)(const char *msg);
 static int  (*plugin_register)(const char *name, void *infostruct);
 static void (*SetExtState)(const char *section, const char *key, const char *val, bool persist);
 
-static int g_cmd = 0;          // our Extensions/action command id
-static int g_script_cmd = 0;   // AddRemoveReaScript id for the hub .lua (never equal to g_cmd)
+static int g_cmd = 0;          // command_id for Extensions / Action List
+static int g_script_cmd = 0;   // AddRemoveReaScript id for the hub .lua
 static char g_script_path[4096];
+static bool g_pending_launch = false;
+static gaccel_register_t g_accel;
 
 static bool resolve_api(void *(*getFunc)(const char *))
 {
@@ -88,8 +90,13 @@ static int ensure_script_cmd()
   return g_script_cmd;
 }
 
-static void run_hub()
+static void launch_timer()
 {
+  // One-shot: unregister first so we do not spin every ~30ms.
+  plugin_register("-timer", (void *)launch_timer);
+  if (!g_pending_launch) return;
+  g_pending_launch = false;
+
   const int script_cmd = ensure_script_cmd();
   if (!script_cmd) {
     if (ShowConsoleMsg) {
@@ -99,27 +106,22 @@ static void run_hub()
     }
     return;
   }
-  // Never Main_OnCommand(g_cmd) — that re-enters this action.
   Main_OnCommand(script_cmd, 0);
+}
+
+static void request_hub_launch()
+{
+  g_pending_launch = true;
+  // Nested Main_OnCommand(script) from inside a command hook does not run
+  // ReaScripts; defer to REAPER's timer so the script starts cleanly.
+  plugin_register("timer", (void *)launch_timer);
 }
 
 static bool hook_command(int command, int flag)
 {
   (void)flag;
   if (g_cmd && command == g_cmd) {
-    run_hub();
-    return true;
-  }
-  return false;
-}
-
-// custom_action docs: related callback must be hookcommand2.
-static bool hook_command2(KbdSectionInfo *sec, int command, int val, int val2,
-                          int relmode, HWND hwnd)
-{
-  (void)sec; (void)val; (void)val2; (void)relmode; (void)hwnd;
-  if (g_cmd && command == g_cmd) {
-    run_hub();
+    request_hub_launch();
     return true;
   }
   return false;
@@ -129,20 +131,15 @@ static void hook_menu(const char *menustr, HMENU menu, int flag)
 {
   if (flag != 0) return;
   if (!menustr || strcmp(menustr, "Main extensions") != 0) return;
-  if (!menu) return;
-
-  // Prefer the ReaScript command id so the menu invokes REAPER's normal
-  // script runner (no dependency on which hook fires for custom_action).
-  ensure_script_cmd();
-  const int id = g_script_cmd ? g_script_cmd : g_cmd;
-  if (!id) return;
+  if (!menu || !g_cmd) return;
 
   MENUITEMINFO mi;
   memset(&mi, 0, sizeof(mi));
   mi.cbSize = sizeof(mi);
   mi.fMask = MIIM_TYPE | MIIM_ID;
   mi.fType = MFT_STRING;
-  mi.wID = (UINT)id;
+  // Bind to our command_id (same as ReaPack menu items → NamedCommandLookup).
+  mi.wID = (UINT)g_cmd;
   mi.dwTypeData = (char *)"ReaProfessor";
   InsertMenuItem(menu, GetMenuItemCount(menu), TRUE, &mi);
 }
@@ -154,8 +151,12 @@ extern "C" REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(
   if (!rec) {
     if (plugin_register) {
       plugin_register("-hookcommand", (void *)hook_command);
-      plugin_register("-hookcommand2", (void *)hook_command2);
       plugin_register("-hookcustommenu", (void *)hook_menu);
+      plugin_register("-timer", (void *)launch_timer);
+      if (g_cmd) {
+        plugin_register("-gaccel", &g_accel);
+        plugin_register("-command_id", (void *)"REAPROFESSOR");
+      }
     }
     return 0;
   }
@@ -166,14 +167,16 @@ extern "C" REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(
   find_hub_script(g_script_path, sizeof(g_script_path));
   ensure_script_cmd();
 
-  // Named action in the Action List + Extensions menu.
-  static custom_action_register_t action =
-    { 0, "REAPROFESSOR", "ReaProfessor", NULL };
-  g_cmd = (int)(intptr_t)plugin_register("custom_action", &action);
+  // Same registration style as ReaPack/SWS (command_id + gaccel + hookcommand).
+  g_cmd = (int)(intptr_t)plugin_register("command_id", (void *)"REAPROFESSOR");
   if (!g_cmd) return 0;
 
+  memset(&g_accel, 0, sizeof(g_accel));
+  g_accel.accel.cmd = (unsigned short)g_cmd;
+  g_accel.desc = "ReaProfessor";
+  plugin_register("gaccel", &g_accel);
+
   plugin_register("hookcommand", (void *)hook_command);
-  plugin_register("hookcommand2", (void *)hook_command2);
   plugin_register("hookcustommenu", (void *)hook_menu);
   AddExtensionsMainMenu();
 
