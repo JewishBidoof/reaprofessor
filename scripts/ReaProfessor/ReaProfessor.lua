@@ -1,5 +1,5 @@
 -- @description ReaProfessor
--- @version 0.5.4
+-- @version 0.6.0
 -- @author JewishBidoof
 -- @about Live cue list: each cue recalls a full FX + send snapshot.
 -- @noindex

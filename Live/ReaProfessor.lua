@@ -1,5 +1,5 @@
 -- @description ReaProfessor
--- @version 0.5.4
+-- @version 0.6.0
 -- @author JewishBidoof
 -- @metapackage
 -- @provides
@@ -22,6 +22,7 @@
 --   [nomain] ../scripts/ReaProfessor/lib/nav.lua > ReaProfessor/lib/nav.lua
 --   [nomain] ../scripts/ReaProfessor/lib/midi.lua > ReaProfessor/lib/midi.lua
 --   [nomain] ../scripts/ReaProfessor/lib/osc.lua > ReaProfessor/lib/osc.lua
+--   [nomain] ../scripts/ReaProfessor/lib/timecode.lua > ReaProfessor/lib/timecode.lua
 --   [nomain] ../scripts/ReaProfessor/lib/path.lua > ReaProfessor/lib/path.lua
 --   [nomain] ../scripts/ReaProfessor/lib/routing.lua > ReaProfessor/lib/routing.lua
 --   [nomain] ../scripts/ReaProfessor/lib/ui.lua > ReaProfessor/lib/ui.lua
@@ -30,8 +31,8 @@
 --   [extension/darwin-arm64] ../dist/darwin-arm64/reaper_reaprofessor.dylib
 --   [extension/win64] ../dist/win64/reaper_reaprofessor64.dll
 -- @changelog
---   + Fix dummy/cue fire OSC feedback loop that stuck selection
---   + Separate Out OSC / Out MIDI / Learn for cues and Go/Back/Fire
+--   + Timecode chase: arm TC CHASE, set/capture cue TC, auto-fire on playhead
+--   + Cue TC mirrored as project markers (RP|id|name)
 -- @about
 --   Live cue list for REAPER: each cue recalls FX + send snapshots.
 --   Open via Extensions → ReaProfessor or Actions → ReaProfessor.

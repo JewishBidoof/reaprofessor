@@ -1,5 +1,5 @@
 -- @description ReaProfessor - Cue List
--- @version 0.5.4
+-- @version 0.6.0
 -- @author JewishBidoof
 -- @noindex
 -- @about Single-screen cue list: recall FX/send snapshots. Go / Back / Fire Selected.
@@ -17,6 +17,7 @@ local Config = require("config")
 local MIDI = require("midi")
 local OSC = require("osc")
 local Routing = require("routing")
+local TC = require("timecode")
 
 local cues = Data.load_cues()
 local meta = Data.load_meta()
@@ -34,6 +35,7 @@ local learn_target = nil -- "go"|"back"|"fire"|"cue"|nil
 local learn_ts = 0
 -- After we fire a cue, ignore its OSC path briefly so an echo cannot re-trigger it.
 local suppress_osc = {} -- path -> expire time (reaper.time_precise)
+local chase_state = TC.new_chase_state()
 
 -- Clear any inbound OSC left from an older feedback loop.
 OSC.clear_inbound_queue()
@@ -137,10 +139,76 @@ local function delete_selected()
   if not edit_mode then return end
   if not Config.actions_enabled() then return Config.deny_action("Delete") end
   if not cues[selected] then return end
+  TC.remove_marker(cues[selected])
   table.remove(cues, selected)
   selected = math.max(1, math.min(selected, #cues))
   persist()
   set_status("Deleted cue")
+end
+
+local function sync_cue_marker(cue)
+  if meta.tc_markers then TC.sync_marker(cue) end
+end
+
+local function edit_cue_tc()
+  local cue = cues[selected]
+  if not cue then
+    set_status("Select a cue first")
+    return
+  end
+  cue = Data.normalize_cue(cue)
+  local cur = cue.tc ~= "" and cue.tc or TC.format(TC.now_seconds())
+  local ok, val = reaper.GetUserInputs(
+    string.format("Cue %d timecode  (%s)", selected, cue.name or ""),
+    1,
+    "Fire at TC (H:M:S:F, blank=clear):,extrawidth=220",
+    cur
+  )
+  if not ok then return end
+  if not val or val:match("^%s*$") then
+    TC.clear_cue_tc(cue)
+    TC.remove_marker(cue)
+    set_status("Cue " .. selected .. " TC cleared")
+  else
+    if not TC.set_cue_tc(cue, val) then
+      set_status("Invalid timecode")
+      return
+    end
+    sync_cue_marker(cue)
+    set_status("Cue " .. selected .. " TC → " .. cue.tc)
+  end
+  cues[selected] = cue
+  persist()
+end
+
+local function capture_cue_tc()
+  local cue = cues[selected]
+  if not cue then return end
+  cue = Data.normalize_cue(cue)
+  TC.set_cue_tc(cue, TC.now_seconds())
+  cues[selected] = cue
+  sync_cue_marker(cue)
+  persist()
+  set_status("Cue " .. selected .. " TC ← " .. cue.tc)
+end
+
+local function clear_cue_tc()
+  local cue = cues[selected]
+  if not cue then return end
+  cue = Data.normalize_cue(cue)
+  TC.clear_cue_tc(cue)
+  TC.remove_marker(cue)
+  cues[selected] = cue
+  persist()
+  set_status("Cue " .. selected .. " TC cleared")
+end
+
+local function toggle_tc_chase()
+  meta.tc_chase = not meta.tc_chase
+  chase_state = TC.new_chase_state()
+  persist()
+  set_status(meta.tc_chase and "TC chase ARMED — cues fire as playhead crosses their TC"
+    or "TC chase off")
 end
 
 local function move_selected(delta)
@@ -455,19 +523,45 @@ local function poll_midi()
   end
 end
 
-UI.init("ReaProfessor", 720, 720, 0)
+local function poll_timecode()
+  if not meta.tc_chase then return end
+  local indices = TC.poll_chase(cues, true, chase_state)
+  for _, idx in ipairs(indices) do
+    selected = idx
+    persist()
+    local cue = cues[idx]
+    local label = cue and (cue.name or ("Cue " .. idx)) or ("Cue " .. idx)
+    local ok, msg = Commands.cue_goto(idx)
+    refresh()
+    set_status((ok and ("TC fire: " .. label) or ("TC fire failed: " .. label))
+      .. (msg and (" · " .. msg) or ""))
+  end
+end
+
+UI.init("ReaProfessor", 760, 780, 0)
 
 local function draw()
   local w, h = UI.dims()
   UI.fill_rect(0, 0, w, h, UI.colors.bg)
 
-  -- Header
+  -- Header + live timecode
   UI.fill_rect(0, 0, w, 56, UI.colors.header)
   UI.hline(0, 56, w, UI.colors.border)
   gfx.setfont(2)
   UI.label(24, 10, "ReaProfessor", UI.colors.text)
   gfx.setfont(3)
-  UI.label(24, 34, "Cue list · each cue recalls FX + send snapshot", UI.colors.muted)
+  UI.label(24, 34, "Cue list · FX/send snapshots · timecode chase", UI.colors.muted)
+  local tc_now = TC.format(TC.now_seconds())
+  gfx.setfont(1)
+  local tc_w = select(1, UI.measure(tc_now)) or 120
+  UI.label(w - 24 - tc_w, 8, tc_now, meta.tc_chase and UI.colors.accent or UI.colors.text)
+  gfx.setfont(3)
+  local chase_bg = meta.tc_chase and UI.colors.edit or UI.colors.panel2
+  if UI.button("chase", w - 118, 30, 102, 22,
+    meta.tc_chase and "CHASE ON" or "TC CHASE",
+    { bg = chase_bg, fg = meta.tc_chase and {0.1, 0.1, 0.05} or UI.colors.text, font = 3 }) then
+    toggle_tc_chase()
+  end
 
   -- Transport
   local y = 68
@@ -482,10 +576,10 @@ local function draw()
   y = 124
   gfx.setfont(3)
   UI.label(16, y + 6, "Parent OSC", UI.colors.muted)
-  if UI.button("parent", 100, y, math.min(220, w * 0.35), 28, meta.osc_parent or "/ReaProfessor", { bg = UI.colors.panel2, font = 3 }) then
+  if UI.button("parent", 100, y, math.min(200, w * 0.30), 28, meta.osc_parent or "/ReaProfessor", { bg = UI.colors.panel2, font = 3 }) then
     edit_parent_osc()
   end
-  if UI.button("midich", 110 + math.min(220, w * 0.35), y, 110, 28, midi_channel_label(), { bg = UI.colors.panel2, font = 3 }) then
+  if UI.button("midich", 110 + math.min(200, w * 0.30), y, 110, 28, midi_channel_label(), { bg = UI.colors.panel2, font = 3 }) then
     cycle_midi_channel()
   end
   local edit_bg = edit_mode and UI.colors.edit or UI.colors.panel
@@ -527,7 +621,7 @@ local function draw()
   UI.hline(16, y, w - 32, UI.colors.border)
   y = 240
   local list_top = y
-  local list_bottom = h - 148
+  local list_bottom = h - 180
   local row_h = 36
   local visible = math.max(1, math.floor((list_bottom - list_top) / row_h))
   if selected < scroll + 1 then scroll = selected - 1 end
@@ -546,7 +640,7 @@ local function draw()
     if UI.button("cue_" .. idx, 16, yy, w - 32, row_h - 2, "", { bg = bg }) then
       selected = idx
       persist()
-      set_status(string.format("Selected cue %d — edit Out OSC / Out MIDI below", idx))
+      set_status(string.format("Selected cue %d — edit TC / Out OSC / Out MIDI below", idx))
     end
     gfx.setfont(1)
     local kind_tag = (cue.kind == "dummy") and "D" or tostring(idx)
@@ -555,7 +649,9 @@ local function draw()
     gfx.setfont(3)
     local osc = Data.cue_osc_path(cue, idx, meta)
     local snap_ok = cue.kind == "dummy" or find_snap(cue.snapshot_name)
-    local right = string.format("%s  %s  %s",
+    local tc_txt = (cue.tc and cue.tc ~= "") and cue.tc or "—"
+    local right = string.format("%s  %s  %s  %s",
+      tc_txt,
       describe_midi(cue.midi),
       osc,
       cue.kind == "dummy" and "dummy" or (snap_ok and "snap" or "MISSING"))
@@ -568,24 +664,35 @@ local function draw()
     UI.label(24, list_top + 20, "No cues yet — Capture Cue to store the current FX/sends state.", UI.colors.muted)
   end
 
-  -- Selected-cue inspector (outgoing MIDI/OSC)
+  -- Selected-cue inspector (TC + outgoing MIDI/OSC)
   local sel = cues[selected] and Data.normalize_cue(cues[selected]) or nil
-  local iy = h - 140
+  local iy = h - 172
   UI.hline(16, iy - 6, w - 32, UI.colors.border)
   gfx.setfont(3)
   if sel then
     local osc = Data.cue_osc_path(sel, selected, meta)
     local kind = (sel.kind == "dummy") and "dummy (send only)" or "snapshot + optional send"
     UI.label(16, iy, string.format("Selected #%d  %s  ·  %s", selected, sel.name or "", kind), UI.colors.muted)
-    if UI.button("cosc", 16, iy + 18, math.floor((w - 48) / 3), 28,
+    local tw3 = math.floor((w - 48) / 3)
+    local tc_label = (sel.tc and sel.tc ~= "") and ("TC: " .. sel.tc) or "TC: —"
+    if UI.button("ctc", 16, iy + 18, tw3, 26, tc_label, { bg = UI.colors.panel2, font = 3 }) then
+      edit_cue_tc()
+    end
+    if UI.button("ctcap", 24 + tw3, iy + 18, tw3, 26, "Capture TC", { bg = UI.colors.panel2, font = 3 }) then
+      capture_cue_tc()
+    end
+    if UI.button("ctclr", 32 + 2 * tw3, iy + 18, tw3, 26, "Clear TC", { bg = UI.colors.panel2, font = 3 }) then
+      clear_cue_tc()
+    end
+    if UI.button("cosc", 16, iy + 48, tw3, 26,
       "Out OSC: " .. osc, { bg = UI.colors.panel2, font = 3 }) then
       edit_cue_osc()
     end
-    if UI.button("cmidi", 24 + math.floor((w - 48) / 3), iy + 18, math.floor((w - 48) / 3), 28,
+    if UI.button("cmidi", 24 + tw3, iy + 48, tw3, 26,
       "Out MIDI: " .. describe_midi(sel.midi), { bg = UI.colors.panel2, font = 3 }) then
       edit_cue_midi()
     end
-    if UI.button("learn", 32 + 2 * math.floor((w - 48) / 3), iy + 18, math.floor((w - 48) / 3), 28,
+    if UI.button("learn", 32 + 2 * tw3, iy + 48, tw3, 26,
       learn_target == "cue" and "Learning MIDI…" or "Learn MIDI",
       { bg = learn_target == "cue" and UI.colors.edit or UI.colors.panel2, font = 3 }) then
       learn_target = "cue"
@@ -593,7 +700,7 @@ local function draw()
       set_status("Play a MIDI note/CC to assign to cue " .. selected)
     end
   else
-    UI.label(16, iy + 8, "Select a cue to edit its outgoing OSC / MIDI", UI.colors.muted)
+    UI.label(16, iy + 8, "Select a cue to edit TC / outgoing OSC / MIDI", UI.colors.muted)
   end
 
   -- Footer actions
@@ -637,6 +744,7 @@ local function loop()
     return
   end
   poll_midi()
+  poll_timecode()
   draw()
   gfx.update()
   reaper.defer(loop)

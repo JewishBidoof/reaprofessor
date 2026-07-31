@@ -49,5 +49,5 @@ Oneshoot bridge (after you map the path): set ExtState `ReaProfessor` / `osc_cmd
 | --- | --- |
 | Wire / matrix view | gfx patch bay on top of native routing |
 | Native UDP OSC | Small bridge → ExtState queue, or CSI |
-| LTC / timecode cues | Markers + timecode actions |
+| LTC / timecode cues | `lib/timecode.lua` + cue TC + CHASE (playhead / LTC-chased project time); optional project markers |
 | View Sets | Screensets under `resources/screensets/` |
