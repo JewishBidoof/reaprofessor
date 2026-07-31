@@ -227,7 +227,7 @@ end
 function Data.new_cue(name, opts)
   opts = opts or {}
   return Data.normalize_cue({
-    id = Data.new_id("cue"),
+    id = opts.id or Data.new_id("cue"),
     name = name or "Cue",
     kind = opts.kind or "cue",
     snapshot_name = opts.snapshot_name or "",
