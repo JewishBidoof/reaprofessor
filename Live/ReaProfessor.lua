@@ -1,5 +1,5 @@
 -- @description ReaProfessor
--- @version 0.4.5
+-- @version 0.4.6
 -- @author JewishBidoof
 -- @metapackage
 -- @provides
@@ -30,8 +30,8 @@
 --   [extension/darwin-arm64] ../dist/darwin-arm64/reaper_reaprofessor.dylib
 --   [extension/win64] ../dist/win64/reaper_reaprofessor64.dll
 -- @changelog
---   + Fix Extensions → ReaProfessor still not opening hub (defer script via timer; command_id like ReaPack)
---   + Extensions via native hookcustommenu (no reaper-menu.ini)
+--   + Find hub script under Scripts/ (scan + ExtState); clearer missing-script errors
+--   + Extensions via native hookcustommenu; deferred ReaScript launch
 --   + ← Back navigation; HiDPI gfx; LP2 cue list / Navigator / Live Mode
 -- @about
 --   Live-oriented REAPER toolkit inspired by LiveProfessor 2.

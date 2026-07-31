@@ -1,5 +1,5 @@
 -- @description ReaProfessor - Extensions menu status / repair
--- @version 0.4.5
+-- @version 0.4.6
 -- @author JewishBidoof
 -- @about Checks native Extensions registration and removes any old menu.ini hijack.
 -- @noindex
