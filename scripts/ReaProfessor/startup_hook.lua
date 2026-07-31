@@ -1,4 +1,4 @@
--- ReaProfessor startup hook — register Actions + keep Extensions menu layout.
+-- ReaProfessor startup hook — register Actions; undo menu.ini hijack.
 
 local res = reaper.GetResourcePath()
 local candidates = {
@@ -24,9 +24,8 @@ if not ok or not Menu then return end
 local hub = Menu.find_hub and Menu.find_hub() or nil
 if hub then
   Menu.register_hub(hub)
-  local named = reaper.GetExtState("ReaProfessor", "menu_named_cmd")
-  if named and named ~= "" then
-    Menu.ensure_extensions_item(named, "ReaProfessor")
+  -- Undo any prior [Main extensions] customization from older builds.
+  if Menu.restore_extensions_menu then
+    Menu.restore_extensions_menu()
   end
-  Menu.register_atexit_flush()
 end

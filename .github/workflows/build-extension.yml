@@ -1,0 +1,48 @@
+name: Build native extension
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "native/**"
+      - "vendor/WDL/**"
+      - "vendor/reaper-sdk/**"
+      - ".github/workflows/build-extension.yml"
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: make -C native OS=Linux
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux64
+          path: dist/linux64/
+
+  macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: make -C native OS=Darwin
+      - uses: actions/upload-artifact@v4
+        with:
+          name: darwin-arm64
+          path: dist/darwin-arm64/
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build (MSVC)
+        shell: cmd
+        run: |
+          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+          if not exist dist\win64 mkdir dist\win64
+          cl /nologo /O2 /LD /EHsc /D_WIN32 /I vendor\reaper-sdk native\reaper_reaprofessor.cpp /Fe:dist\win64\reaper_reaprofessor64.dll /link /DLL user32.lib
+      - uses: actions/upload-artifact@v4
+        with:
+          name: win64
+          path: dist/win64/

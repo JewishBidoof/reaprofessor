@@ -1,66 +1,27 @@
--- @description ReaProfessor action + Extensions menu registration
--- @version 0.4.1
+-- @description ReaProfessor action registration (native Extensions menu)
+-- @version 0.4.2
 -- @author JewishBidoof
 -- @noindex
 --
--- Pure ReaScript cannot append to Extensions without writing [Main extensions]
--- in reaper-menu.ini. That replaces the stock menu, and REAPER then parks
--- hookcustommenu items (ReaPack, SWS) under "Default menu: Main extensions".
+-- Extensions → ReaProfessor is provided by the native extension
+-- (reaper_reaprofessor.*) via hookcustommenu — the same mechanism ReaPack/SWS
+-- use. Pure ReaScript must NOT customize [Main extensions] in reaper-menu.ini;
+-- that replaces the stock menu and nests every other extension under
+-- "Default menu: Main extensions".
 --
--- Fix: write a complete Extensions layout with ReaProfessor plus explicit
--- ReaPack and SWS/S&M submenus (named commands), so those stay reachable at
--- the top level. After quit/reopen, optionally uncheck
--- Options → Customize menus/toolbars → Include default menu as submenu
--- to hide the leftover Default menu wrapper.
+-- This module:
+--   • registers the hub in the Action List
+--   • removes any prior [Main extensions] hijack from older ReaProfessor builds
+--   • reports whether the native extension is loaded
 
 local Menu = {}
 
-local MENU_TITLE = "ReaProfessor"
 local SECTION = "Main extensions"
-local FLAG_KEY = "extensions_menu_installed"
 local PENDING_KEY = "menu_named_cmd"
 local HUB_KEY = "menu_hub_path"
+local FLAG_KEY = "extensions_menu_installed"
 local TITLE_NEEDLE = "ReaProfessor"
-local LAYOUT_TAG = "reaprofessor_layout=0.4.1"
-
--- ReaPack's own Extensions submenu (from ReaPack main.cpp).
-local REAPACK_ITEMS = {
-  { id = "_REAPACK_SYNC",   label = "&Synchronize packages" },
-  { id = "_REAPACK_BROWSE", label = "&Browse packages..." },
-  { id = "_REAPACK_IMPORT", label = "&Import repositories..." },
-  { id = "_REAPACK_MANAGE", label = "&Manage repositories..." },
-  { id = "-" },
-  { id = "_REAPACK_ABOUT",  label = "&About ReaPack" },
-}
-
--- Top-level entries from SWS SWSCreateExtensionsMenu (Menus.cpp). Nested
--- SWS submenus are flattened to their primary open/dialog actions.
-local SWS_ITEMS = {
-  { id = "_SWSAUTOCOLOR_OPEN",            label = "Auto Color/Icon/Layout" },
-  { id = "_AUTORENDER",                   label = "Autorender: Batch render regions..." },
-  { id = "_XENAKIOS_SHOW_COMMANDPARAMS",  label = "Command parameters..." },
-  { id = "_BR_CONTEXTUAL_TOOLBARS_PREF",  label = "Contextual toolbars..." },
-  { id = "_S&M_SENDS4",                   label = "Cue Buss generator" },
-  { id = "_S&M_CYCLEDITOR",               label = "Cycle Action editor..." },
-  { id = "_PADRE_ENVPROC",                label = "Envelope processor..." },
-  { id = "_S&M_SHOWFIND",                 label = "Find" },
-  { id = "_FNG_GROOVE_TOOL",              label = "Groove tool..." },
-  { id = "_IX_LABEL_PROC",                label = "Label processor..." },
-  { id = "_BR_ANALAYZE_LOUDNESS_DLG",     label = "Loudness..." },
-  { id = "_PADRE_ENVLFO",                 label = "LFO generator..." },
-  { id = "_S&M_SHOWMIDILIVE",             label = "Live Configs" },
-  { id = "_SWSMARKERLIST1",               label = "MarkerList" },
-  { id = "_S&M_SHOW_NOTES_VIEW",          label = "Notes" },
-  { id = "_SWS_PROJLIST_OPEN",            label = "Project List" },
-  { id = "_SWSCONSOLE",                   label = "ReaConsole..." },
-  { id = "_S&M_SHOW_RGN_PLAYLIST",        label = "Region Playlist" },
-  { id = "_S&M_SHOW_RESOURCES_VIEW",      label = "Resources" },
-  { id = "_SWSSNAPSHOT_OPEN",             label = "Snapshots" },
-  { id = "_SWSTL_OPEN",                   label = "Tracklist" },
-  { id = "_SWS_ZOOMPREFS",                label = "Zoom preferences..." },
-  { id = "-" },
-  { id = "_SWS_ABOUT",                    label = "About SWS Extension" },
-}
+local NATIVE_CMD = "_REAPROFESSOR"
 
 local function read_file(path)
   local f = io.open(path, "r")
@@ -149,127 +110,28 @@ local function serialize_sections(sections, order)
   return table.concat(parts, "\n")
 end
 
-local function cmd_available(id)
-  if not id or id == "" or id == "-" then return false end
-  local n = reaper.NamedCommandLookup(id)
-  return n and n ~= 0
+local function section_looks_like_ours(body)
+  if not body then return false end
+  local text = table.concat(body, "\n")
+  if text:find(TITLE_NEEDLE, 1, true) then return true end
+  if text:find("_RS", 1, true) and text:lower():find("reaprofessor", 1, true) then
+    return true
+  end
+  -- Old 0.4.1 bandaid layout
+  if text:find("_REAPACK_BROWSE", 1, true) and text:find("ReaProfessor", 1, true) then
+    return true
+  end
+  return false
 end
 
---- Build a complete [Main extensions] body: ReaProfessor + ReaPack + SWS.
-local function build_extensions_body(named_cmd, title)
-  title = title or MENU_TITLE
-  local items = {}
-  local function add(val)
-    items[#items + 1] = val
-  end
-
-  add(named_cmd .. " " .. title)
-  add("-1")
-
-  add("-2 Rea&Pack")
-  local rp = 0
-  for _, e in ipairs(REAPACK_ITEMS) do
-    if e.id == "-" then
-      if rp > 0 then add("-1") end
-    elseif cmd_available(e.id) then
-      add(e.id .. " " .. e.label)
-      rp = rp + 1
-    end
-  end
-  add("-3")
-
-  add("-1")
-  add("-2 S&WS/S&M")
-  local sw = 0
-  for _, e in ipairs(SWS_ITEMS) do
-    if e.id == "-" then
-      if sw > 0 then add("-1") end
-    elseif cmd_available(e.id) then
-      add(e.id .. " " .. e.label)
-      sw = sw + 1
-    end
-  end
-  add("-3")
-
-  local out = { "title=E&xtensions" }
-  for i, val in ipairs(items) do
-    out[#out + 1] = string.format("item_%d=%s", i - 1, val)
-  end
-  return out, rp, sw
+--- True when the native extension registered _REAPROFESSOR.
+function Menu.native_extension_loaded()
+  local cmd = reaper.NamedCommandLookup(NATIVE_CMD)
+  return cmd and cmd ~= 0
 end
 
-local function layout_is_complete(body, named_cmd)
-  if not body or not named_cmd then return false end
-  local joined = table.concat(body, "\n")
-  if not joined:find(named_cmd, 1, true) then return false end
-  if not joined:find("ReaProfessor", 1, true) then return false end
-  -- Must include ReaPack browse as a real command (not only Default menu).
-  if not joined:find("_REAPACK_BROWSE", 1, true) then return false end
-  -- ReaProfessor itself must be a flat _RS command, not a numeric submenu id.
-  local flat = false
-  for _, line in ipairs(body) do
-    local val = line:match("^item_%d+=(.*)$")
-    if val and val:find(named_cmd, 1, true) and val:match("^_RS") then
-      flat = true
-      break
-    end
-  end
-  return flat
-end
-
-local RESTART_HINT = table.concat({
-  "Quit REAPER fully (File → Quit), then reopen to load the menu.",
-  "",
-  "If ReaPack/SWS still sit under “Default menu: Main extensions”:",
-  "  Options → Customize menus/toolbars… → Main extensions",
-  "  → uncheck “Include default menu as submenu” → OK.",
-  "Our layout already lists ReaPack and SWS/S&M as top-level submenus.",
-}, "\n")
-
---- Install / repair complete Extensions → ReaProfessor + ReaPack + SWS layout.
-function Menu.ensure_extensions_item(named_cmd, title)
-  title = title or MENU_TITLE
-  if not named_cmd or named_cmd == "" then
-    return false, false, "Hub action is not registered"
-  end
-
-  local path = reaper.GetResourcePath() .. "/reaper-menu.ini"
-  local text = read_file(path) or ""
-  local sections, order = parse_sections(text)
-
-  if not sections[SECTION] then
-    sections[SECTION] = {}
-    order[#order + 1] = SECTION
-  end
-
-  local body = sections[SECTION]
-  if layout_is_complete(body, named_cmd) then
-    reaper.SetExtState("ReaProfessor", FLAG_KEY, "1", true)
-    reaper.SetExtState("ReaProfessor", "menu_layout", LAYOUT_TAG, true)
-    return true, false,
-      "Extensions menu already has ReaProfessor + ReaPack/SWS.\n\n"
-      .. "If you do not see it yet, quit REAPER fully and reopen.\n"
-      .. "If ReaPack/SWS are under “Default menu”, uncheck\n"
-      .. "“Include default menu as submenu” in Customize menus/toolbars."
-  end
-
-  local new_body, rp, sw = build_extensions_body(named_cmd, title)
-  sections[SECTION] = new_body
-
-  if not write_file(path, serialize_sections(sections, order)) then
-    return false, false, "Could not write reaper-menu.ini"
-  end
-  reaper.SetExtState("ReaProfessor", FLAG_KEY, "1", true)
-  reaper.SetExtState("ReaProfessor", "menu_layout", LAYOUT_TAG, true)
-
-  local summary = string.format(
-    "Updated Extensions menu:\n  • ReaProfessor\n  • ReaPack (%d actions)\n  • SWS/S&M (%d actions)\n\n%s",
-    rp, sw, RESTART_HINT
-  )
-  return true, true, summary
-end
-
---- Remove our Extensions section entirely so REAPER restores stock hooks.
+--- Remove [Main extensions] if we (or an older ReaProfessor) customized it,
+--- so ReaPack/SWS/other hookcustommenu extensions return to the stock menu.
 function Menu.restore_extensions_menu()
   local path = reaper.GetResourcePath() .. "/reaper-menu.ini"
   local text = read_file(path)
@@ -280,10 +142,17 @@ function Menu.restore_extensions_menu()
   end
 
   local sections, order = parse_sections(text)
-  if not sections[SECTION] then
+  local body = sections[SECTION]
+  if not body then
     reaper.DeleteExtState("ReaProfessor", FLAG_KEY, true)
     reaper.DeleteExtState("ReaProfessor", "menu_layout", true)
     return true, false, "Extensions menu already using defaults"
+  end
+
+  -- Only remove the section if it looks like ours. If the user has a genuine
+  -- custom Extensions menu without ReaProfessor, leave it alone.
+  if not section_looks_like_ours(body) then
+    return true, false, "Custom Extensions menu left unchanged (no ReaProfessor entries)"
   end
 
   sections[SECTION] = nil
@@ -303,7 +172,34 @@ function Menu.restore_extensions_menu()
 
   reaper.DeleteExtState("ReaProfessor", FLAG_KEY, true)
   reaper.DeleteExtState("ReaProfessor", "menu_layout", true)
-  return true, true, "Removed customized Extensions menu (stock ReaPack/SWS restored).\n\nQuit REAPER fully, then reopen."
+  return true, true,
+    "Removed ReaProfessor reaper-menu.ini hijack.\nStock Extensions menu restored (ReaPack/SWS/others via hooks).\n\nQuit REAPER fully, then reopen."
+end
+
+-- Kept name for callers; no longer writes menu.ini.
+function Menu.ensure_extensions_item(named_cmd, title)
+  local ok, changed, msg = Menu.restore_extensions_menu()
+  if not ok then return false, false, msg end
+
+  if Menu.native_extension_loaded() then
+    local extra = changed
+      and ("\n\n" .. msg)
+      or ""
+    return true, changed,
+      "Extensions → ReaProfessor comes from the native extension (hookcustommenu)."
+      .. "\nOther extensions stay top-level siblings."
+      .. extra
+  end
+
+  return true, changed, table.concat({
+    "Native extension not loaded — Extensions menu entry unavailable.",
+    "",
+    "Install reaper_reaprofessor into UserPlugins (ReaPack or ./tools/link_to_reaper.sh),",
+    "then File → Quit and reopen REAPER.",
+    "",
+    "Do not customize [Main extensions] in reaper-menu.ini; that nests other extensions.",
+    changed and ("\n" .. msg) or "",
+  }, "\n")
 end
 
 function Menu.remove_startup_hook()
@@ -338,7 +234,7 @@ function Menu.remove_startup_hook()
     local start_block = line:find("ReaProfessor", 1, true)
       and (line:find("startup_hook", 1, true)
         or line:find("keep Extensions", 1, true)
-        or line:find("Extensions menu entry", 1, true)
+        or line:find("Extensions menu", 1, true)
         or line:find("never customize Extensions", 1, true))
     if start_block then
       i = i + 1
@@ -359,7 +255,7 @@ function Menu.remove_startup_hook()
   end
 
   local cleaned = table.concat(out, "\n"):gsub("\n\n\n+", "\n\n"):gsub("^%s+", ""):gsub("%s+$", "")
-  if cleaned == "" or cleaned == "end" or cleaned:match("^end%s*$") then
+  if cleaned == "" or cleaned:match("^end%s*$") then
     os.remove(startup)
     return true
   end
@@ -381,7 +277,7 @@ function Menu.ensure_startup_hook(hub_path)
   end
 
   local snippet = string.format([[
--- ReaProfessor: keep Extensions menu layout registered
+-- ReaProfessor: register Actions; undo any menu.ini hijack
 do
   local hook = %q
   if reaper.file_exists(hook) then
@@ -396,28 +292,17 @@ end
   return write_file(startup, data .. snippet)
 end
 
-local atexit_registered = false
-local function flush_pending_menu()
-  local named = reaper.GetExtState("ReaProfessor", PENDING_KEY)
-  if not named or named == "" then return end
-  Menu.ensure_extensions_item(named, MENU_TITLE)
-end
-
 function Menu.register_atexit_flush()
-  if atexit_registered then return end
-  atexit_registered = true
-  reaper.atexit(flush_pending_menu)
+  -- No menu.ini writes to flush.
 end
 
---- Register Actions + ensure complete Extensions menu layout.
 function Menu.install(hub_path)
   local cmd, named = Menu.register_hub(hub_path)
   if cmd == 0 or not named then
     return false, "AddRemoveReaScript failed — use Actions → Load ReaScript… on ReaProfessor.lua, then retry."
   end
   Menu.ensure_startup_hook(hub_path)
-  Menu.register_atexit_flush()
-  local ok, _, msg = Menu.ensure_extensions_item(named, MENU_TITLE)
+  local ok, _, msg = Menu.ensure_extensions_item(named, "ReaProfessor")
   if not ok then return false, msg, named, cmd end
   return true, msg, named, cmd
 end
@@ -441,9 +326,5 @@ function Menu.find_hub()
   end
   return nil
 end
-
--- Exported for tests
-Menu._build_extensions_body = build_extensions_body
-Menu._layout_is_complete = layout_is_complete
 
 return Menu

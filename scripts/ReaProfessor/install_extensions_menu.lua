@@ -1,7 +1,7 @@
--- @description ReaProfessor - Restore / install Extensions menu entry
--- @version 0.4.1
+-- @description ReaProfessor - Extensions menu status / repair
+-- @version 0.4.2
 -- @author JewishBidoof
--- @about Registers ReaProfessor in Actions and installs a complete Extensions menu (ReaProfessor + ReaPack + SWS).
+-- @about Checks native Extensions registration and removes any old menu.ini hijack.
 -- @noindex
 
 local res = reaper.GetResourcePath() .. "/Scripts/ReaProfessor/"
@@ -22,12 +22,7 @@ end
 local ok, msg, named, cmd = Menu.install(hub)
 local text
 if ok then
-  text = string.format(
-    "%s\n\nAction ID: %s\nCommand: %s",
-    tostring(msg),
-    tostring(named),
-    tostring(cmd)
-  )
+  text = string.format("%s\n\nAction ID: %s\nCommand: %s", tostring(msg), tostring(named), tostring(cmd))
 else
   text = "Failed:\n\n" .. tostring(msg)
 end

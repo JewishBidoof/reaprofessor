@@ -1,5 +1,5 @@
 -- @description ReaProfessor
--- @version 0.4.1
+-- @version 0.4.2
 -- @author JewishBidoof
 -- @metapackage
 -- @provides
@@ -26,11 +26,13 @@
 --   [nomain] ../scripts/ReaProfessor/lib/routing.lua > ReaProfessor/lib/routing.lua
 --   [nomain] ../scripts/ReaProfessor/lib/ui.lua > ReaProfessor/lib/ui.lua
 --   [data] ../resources/osc/ReaProfessor.ReaperOSC > ReaProfessor.ReaperOSC
+--   [extension/linux64] ../dist/linux64/reaper_reaprofessor-x86_64.so
 -- @changelog
---   + Extensions menu embeds ReaPack + SWS (avoids Default-menu-only nesting)
---   + Install/repair rewrites incomplete layouts; clearer quit/reopen guidance
+--   + Extensions via native hookcustommenu (no reaper-menu.ini; other extensions stay siblings)
+--   + Removes old menu.ini hijacks from 0.4.0/0.4.1
 --   + ← Back navigation; HiDPI gfx; LP2 cue list / Navigator / Live Mode
 -- @about
 --   Live-oriented REAPER toolkit inspired by LiveProfessor 2.
 --   Open via Extensions → ReaProfessor or Actions → ReaProfessor.
---   Extensions layout lists ReaProfessor, ReaPack, and SWS/S&M explicitly.
+--   Extensions menu entry comes from reaper_reaprofessor (same API as ReaPack/SWS).
+--   macOS/Windows extension binaries: build with native/Makefile or CI artifacts.

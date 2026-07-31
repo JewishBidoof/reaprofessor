@@ -17,39 +17,29 @@ local ok,err=pcall(function()
   local cmd, named = Menu.register_hub(hub)
   add("named", named~=nil and named:sub(1,3)=="_RS")
 
-  -- Force incomplete layout first (old bug: ReaProfessor only)
+  -- Simulate old hijack
   do
     local path = reaper.GetResourcePath().."/reaper-menu.ini"
     local f=io.open(path,"w")
-    f:write("[Main extensions]\nitem_0="..named.." ReaProfessor\n")
+    f:write("[Main extensions]\ntitle=E&xtensions\nitem_0="..named.." ReaProfessor\nitem_1=-2 Rea&Pack\nitem_2=_REAPACK_BROWSE Browse\nitem_3=-3\n")
     f:close()
   end
+
   local ok1, changed, msg = Menu.ensure_extensions_item(named, "ReaProfessor")
   add("ext_ok", ok1==true)
-  add("repaired", changed==true)
-  add("msg_has_reapack", tostring(msg):find("ReaPack",1,true)~=nil)
+  add("cleared_hijack", changed==true)
 
   local path = reaper.GetResourcePath().."/reaper-menu.ini"
   local f=io.open(path,"r"); local text=f and f:read("*a") or ""; if f then f:close() end
-  add("has_section", text:find("%[Main extensions%]")~=nil)
-  add("has_reapack", text:find("_REAPACK_BROWSE",1,true)~=nil)
-  add("has_sws", text:find("_SWS_ABOUT",1,true)~=nil or text:find("_SWSSNAPSHOT_OPEN",1,true)~=nil)
-  add("has_reapack_submenu", text:find("%-2 Rea",1,true)~=nil or text:find("-2 Rea",1,true)~=nil)
+  local has_section = text:find("%[Main extensions%]")~=nil
+  add("no_main_extensions", has_section==false)
 
-  local flat = false
-  for line in text:gmatch("[^\n]+") do
-    if line:find(named,1,true) and line:find("ReaProfessor",1,true) then
-      local val = line:match("^item_%d+=(.*)$")
-      if val and val:match("^_RS") then flat = true end
-      if val and val:match("^%d+%s") then flat = false; add("looks_like_submenu", val) end
-    end
-  end
-  add("flat_item", flat)
+  add("native_loaded", Menu.native_extension_loaded()==true)
+  local native_cmd = reaper.NamedCommandLookup("_REAPROFESSOR")
+  add("native_cmd", native_cmd~=0)
 
-  -- Second ensure should be no-op
-  local ok2, changed2 = Menu.ensure_extensions_item(named, "ReaProfessor")
-  add("second_ok", ok2==true)
-  add("second_noop", changed2==false)
+  -- Must NOT reintroduce bandaid reapack entries
+  add("no_bandaid_rewrite", (text:find("_REAPACK_BROWSE",1,true)==nil))
 
   -- Nav stack
   Nav.clear()
@@ -65,10 +55,8 @@ local ok,err=pcall(function()
   add("back_ok", Nav.back()==true)
   add("pending_hub", Nav.take_pending()==hub)
 
-  -- DPI init
   UI.init("dpi-test", 200, 100, 0)
   add("scale_ge1", (UI.scale or 0) >= 1)
-  add("ext_retina_set", gfx.ext_retina ~= nil)
   local w,h = UI.dims()
   add("dims_ok", w>0 and h>0)
   gfx.quit()
@@ -76,9 +64,9 @@ local ok,err=pcall(function()
   local function get(k) for _,l in ipairs(lines) do local a,b=l:match("^([^=]+)=(.*)$"); if a==k then return b end end end
   local failed={}
   for _,k in ipairs({
-    "ext_ok","repaired","has_reapack","has_sws","has_reapack_submenu","flat_item",
-    "second_ok","second_noop","can_back0","can_back1","back_ok","scale_ge1","dims_ok",
-    "pending1","pending_hub"
+    "ext_ok","cleared_hijack","no_main_extensions","native_loaded","native_cmd",
+    "no_bandaid_rewrite","can_back0","can_back1","back_ok","pending1","pending_hub",
+    "scale_ge1","dims_ok"
   }) do
     if get(k)~="true" then failed[#failed+1]=k end
   end

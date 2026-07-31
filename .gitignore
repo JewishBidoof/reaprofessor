@@ -1,9 +1,20 @@
 # Dependencies / build
 node_modules/
 *.o
+
+# Built extension objects (keep committed dist/ binaries)
+*.o
+!dist/**/*.so
+!dist/**/*.dll
+!dist/**/*.dylib
+
+# Ignore stray binaries outside dist/
 *.so
 *.dll
 *.dylib
+!dist/**/*.so
+!dist/**/*.dll
+!dist/**/*.dylib
 
 # REAPER local userdata (never commit)
 .reaper-resource/
