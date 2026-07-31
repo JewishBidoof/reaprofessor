@@ -1,5 +1,5 @@
 -- @description ReaProfessor shared UI helpers (gfx) — LP-inspired + HiDPI
--- @version 0.4.0
+-- @version 0.5.2
 -- @author JewishBidoof
 -- @noindex
 --
@@ -32,6 +32,7 @@ UI.colors = {
   tool_midi  = {0.30, 0.55, 0.90},
   tool_cmd   = {0.55, 0.45, 0.75},
   tool_note  = {0.60, 0.60, 0.35},
+  tool_ch    = {0.95, 0.45, 0.12}, -- Create Channels — high-contrast orange
   next_cue   = {0.18, 0.32, 0.22},
 }
 
