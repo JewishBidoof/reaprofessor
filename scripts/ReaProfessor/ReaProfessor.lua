@@ -1,5 +1,5 @@
 -- @description ReaProfessor
--- @version 0.3.8
+-- @version 0.3.9
 -- @author JewishBidoof
 -- @about Live plugin host toolkit for REAPER (cue lists, snapshots, 1:1 channels, custom MIDI/OSC).
 -- @noindex
@@ -17,7 +17,7 @@ local running = true
 local pending_open = nil
 local status = ""
 
-UI.init("ReaProfessor", 480, 580, 0)
+UI.init("ReaProfessor", 480, 640, 0)
 
 local function open_script(rel)
   local path = script_dir .. rel
@@ -33,8 +33,10 @@ local function open_script(rel)
 end
 
 local buttons = {
+  { id = "live",  label = "Live Mode (perform)",   file = "live_mode.lua" },
   { id = "cues",  label = "Cue List",              file = "cue_list.lua" },
   { id = "snaps", label = "Global Snapshots",      file = "snapshots.lua" },
+  { id = "nav",   label = "Navigator",             file = "navigator.lua" },
   { id = "chains",label = "Chains",                file = "chain_rack.lua" },
   { id = "ch",    label = "Create Channels (1:1)", file = "create_channels.lua" },
   { id = "map",   label = "MIDI / OSC Mapping",    file = "mapping.lua" },
@@ -61,20 +63,15 @@ local function draw()
   UI.label(24, 44, "Live plugin hosting for REAPER", UI.colors.muted)
 
   local y = 92
-  local bw, bh = w - 48, 42
+  local bw, bh = w - 48, 40
   for _, b in ipairs(buttons) do
     if UI.button(b.id, 24, y, bw, bh, b.label, { bg = UI.colors.panel }) then
       open_script(b.file)
     end
-    y = y + 50
+    y = y + 46
   end
 
-  if UI.button("live", 24, y, bw, bh, "Toggle Live Mode", { bg = UI.colors.panel2 }) then
-    open_script("live_mode.lua")
-  end
-  y = y + 56
-
-  if UI.button("menu", 24, y, bw, 34, "Restore Extensions menu", { bg = UI.colors.panel }) then
+  if UI.button("menu", 24, y + 8, bw, 34, "Restore Extensions menu", { bg = UI.colors.panel2 }) then
     restore_menu()
   end
 

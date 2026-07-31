@@ -6,13 +6,14 @@ Target: make REAPER feel like a dedicated live plugin host instead of a studio D
 
 | Feature | LP2 behavior | ReaProfessor approach |
 | --- | --- | --- |
-| Cue List | Ordered cues: recall snapshot, send MIDI, map controller, OSC | `cue_list.lua` + `lib/commands.lua` |
-| Global Snapshots | Store/recall whole show state | `snapshots.lua` with **bypass / params / full FX reload** modes |
+| Cue List | Ordered cues with nested actions, fade/pre/post, GO NEXT, Edit/Armed | `cue_list.lua` — hierarchical actions + inspector |
+| Global Snapshots | Store/recall whole show; filter; fire cue | `snapshots.lua` — full FXCHAIN + fire-cue link |
+| Navigator | Overview of all plugins | `navigator.lua` |
+| Live Mode | Perform surface | `live_mode.lua` — next/on-deck + GO + chains |
 | 1:1 channel setup | Quick rack of inputs | `create_channels.lua` — N mono in→HW out |
-| Record while processing | Multitrack dry + live FX | **Same strip** (record input / monitor FX) or **double patch** (REC + FX tracks) |
-| OSC / MIDI | Hardware + show control | **Mapping** editor — user-defined only (no defaults); control service |
-| Live Mode | Focus on racks + cues | `live_mode.lua` |
-| Signal Chains | Serial plugin racks | Tracks as chains; `chain_rack.lua` |
+| Record while processing | Multitrack dry + live FX | **Same strip** or **double patch** |
+| OSC / MIDI | Hardware + show control | **Mapping** editor; control service |
+| Signal Chains | Serial plugin racks | `chain_rack.lua` horizontal nodes |
 
 ## Record-safe processing
 
