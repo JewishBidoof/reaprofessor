@@ -1,8 +1,8 @@
 -- @description ReaProfessor - Cue List
--- @version 0.5.0
+-- @version 0.5.1
 -- @author JewishBidoof
 -- @noindex
--- @about Cues that recall processing snapshots. Go / Back / Fire Selected.
+-- @about Single-screen cue list: recall FX/send snapshots. Go / Back / Fire Selected.
 
 local res = reaper.GetResourcePath() .. "/Scripts/ReaProfessor/"
 local src = debug.getinfo(1, "S").source
@@ -11,19 +11,12 @@ local alt = reaper.GetResourcePath() .. "/Scripts/Live/ReaProfessor/"
 package.path = script_dir .. "lib/?.lua;" .. alt .. "lib/?.lua;" .. res .. "lib/?.lua;" .. package.path
 
 local UI = require("ui")
-local Nav = require("nav")
 local Data = require("data")
 local Commands = require("commands")
 local Config = require("config")
 local MIDI = require("midi")
 local OSC = require("osc")
-
-local THIS = script_dir .. "cue_list.lua"
-if not reaper.file_exists(THIS) then
-  local altp = alt .. "cue_list.lua"
-  if reaper.file_exists(altp) then THIS = altp end
-end
-Nav.set_current(THIS)
+local Routing = require("routing")
 
 local cues = Data.load_cues()
 local meta = Data.load_meta()
@@ -270,13 +263,12 @@ local function fire_selected()
   set_status(msg or (ok and "Fired" or "Fire failed"), not ok)
 end
 
-local function open_channels()
-  local path = Nav.resolve("create_channels.lua", script_dir)
-  if path and reaper.file_exists(path) then
-    Nav.go(path)
-    running = false
-  else
-    set_status("create_channels.lua missing")
+local function create_channels_popup()
+  local ok, msg = Routing.prompt_create_channels()
+  if ok then
+    set_status(msg, true)
+  elseif msg and msg ~= "cancelled" and msg ~= "disabled" then
+    set_status(msg, true)
   end
 end
 
@@ -384,7 +376,7 @@ local function poll_midi()
   end
 end
 
-UI.init("ReaProfessor · Cue List", 720, 720, 0)
+UI.init("ReaProfessor", 720, 720, 0)
 
 local function draw()
   local w, h = UI.dims()
@@ -393,11 +385,10 @@ local function draw()
   -- Header
   UI.fill_rect(0, 0, w, 56, UI.colors.header)
   UI.hline(0, 56, w, UI.colors.border)
-  if Nav.back_button(UI, 8, 12) then running = false end
   gfx.setfont(2)
-  UI.label(96, 10, "CUE LIST", UI.colors.text)
+  UI.label(24, 10, "ReaProfessor", UI.colors.text)
   gfx.setfont(3)
-  UI.label(96, 34, "Each cue recalls a full FX + send snapshot", UI.colors.muted)
+  UI.label(24, 34, "Cue list · each cue recalls FX + send snapshot", UI.colors.muted)
 
   -- Transport
   local y = 68
@@ -500,7 +491,7 @@ local function draw()
     add_cue(true)
   end
   if UI.button("ch", 40 + fw * 3, fy, fw, 32, "Create Channels", { bg = UI.colors.panel }) then
-    open_channels()
+    create_channels_popup()
   end
 
   fy = h - 64
@@ -533,7 +524,7 @@ end
 
 local function loop()
   if not running then
-    UI.quit_and_nav(Nav)
+    gfx.quit()
     return
   end
   poll_midi()

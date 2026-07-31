@@ -234,6 +234,62 @@ function Routing.track_role(tr)
   return role or ""
 end
 
+--- Popup to confirm channel-create settings, then run the macro.
+-- @return ok, message
+function Routing.prompt_create_channels()
+  local Data = require("data")
+  local Config = require("config")
+  if Config and Config.actions_enabled and not Config.actions_enabled() then
+    if Config.deny_action then Config.deny_action("Create Channels") end
+    return false, "disabled"
+  end
+
+  local meta = Data.load_meta()
+  local count = 16
+  local start_in = 1
+  local start_out = 1
+  local mode = meta.channel_mode or "same_strip"
+  local ok, vals = reaper.GetUserInputs(
+    "Create Channels",
+    4,
+    "Count,Start input,Start output,Mode (same_strip or double_patch)",
+    string.format("%d,%d,%d,%s", count, start_in, start_out, mode)
+  )
+  if not ok then return false, "cancelled" end
+
+  local c, si, so, m = vals:match("([^,]+),([^,]+),([^,]+),([^,]+)")
+  count = math.max(1, math.min(128, math.floor(tonumber(c) or 16)))
+  start_in = math.max(1, math.floor(tonumber(si) or 1))
+  start_out = math.max(1, math.floor(tonumber(so) or start_in))
+  mode = tostring(m or "same_strip"):match("^%s*(.-)%s*$")
+  if mode ~= "double_patch" then mode = "same_strip" end
+
+  local end_in = start_in + count - 1
+  local end_out = start_out + count - 1
+  local summary = string.format(
+    "Create %d channel(s)?\n\nInputs %d–%d → outputs %d–%d\nMode: %s\nMaster send will be disabled (no feedback).",
+    count, start_in, end_in, start_out, end_out,
+    mode == "double_patch" and "double patch (REC + FX)" or "same strip"
+  )
+  -- 4 = Yes/No; 6 = Yes
+  if reaper.ShowMessageBox(summary, "ReaProfessor · Create Channels", 4) ~= 6 then
+    return false, "cancelled"
+  end
+
+  local created = Routing.create_channels(count, {
+    start_input = start_in,
+    start_output = start_out,
+    mode = mode,
+    arm = true,
+    prefix = "CH",
+  })
+  meta.channel_mode = mode
+  Data.save_meta(meta)
+  local msg = string.format("Created %d %s channel(s)", #created, mode)
+  reaper.ShowConsoleMsg("[ReaProfessor] " .. msg .. "\n")
+  return true, msg
+end
+
 --- Tracks that should receive snapshot FX changes (process / same_strip / selected).
 function Routing.snapshot_target_tracks(selected_only)
   local targets = {}

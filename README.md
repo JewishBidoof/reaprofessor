@@ -70,7 +70,7 @@ tests/                  Automated REAPER script checks
 
 ## Status
 
-Active development (v0.5.0):
+Active development (v0.5.1):
 
 - **Cue List** is the product: each cue recalls a full FX + track-send snapshot
 - **Go / Back / Fire Selected**, edit mode (reorder/delete), Create Channels helper
