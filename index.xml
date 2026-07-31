@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="ReaProfessor" commit="b395b873ad9a55bf2a1fdbe32a13a894a6cf50ed">
+<index version="1" name="ReaProfessor" commit="eeae75adf896e226f42de520fb0557549bb42a73">
   <category name="Live">
     <reapack name="ReaProfessor.lua" type="script" desc="ReaProfessor">
       <metadata>
@@ -7,7 +7,7 @@
 {\colortbl;\red255\green0\blue0;\red0\green0\blue255;}
 \widowctrl\hyphauto
 
-{\pard \ql \f0 \sa180 \li0 \fi0 Live-oriented REAPER toolkit inspired by LiveProfessor 2. Run Actions \u8594 ? Show action list \u8594 ? ReaProfessor. Does not modify the Extensions menu (keeps ReaPack/SWS top-level).\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Live-oriented REAPER toolkit inspired by LiveProfessor 2. Run Actions \u8594 ? Show action list \u8594 ? ReaProfessor. Open via Extensions \u8594 ? ReaProfessor or Actions. Flat Extensions item keeps ReaPack/SWS top-level.\par}
 }
 ]]></description>
       </metadata>
@@ -259,6 +259,34 @@
         <source file="ReaProfessor/lib/ui.lua">https://github.com/JewishBidoof/reaprofessor/raw/b395b873ad9a55bf2a1fdbe32a13a894a6cf50ed/scripts/ReaProfessor/lib/ui.lua</source>
         <source type="data" file="ReaProfessor.ReaperOSC">https://github.com/JewishBidoof/reaprofessor/raw/b395b873ad9a55bf2a1fdbe32a13a894a6cf50ed/resources/osc/ReaProfessor.ReaperOSC</source>
       </version>
+      <version name="0.4.0" author="JewishBidoof" time="2026-07-31T18:47:38Z">
+        <changelog><![CDATA[+ Restore Extensions → ReaProfessor shortcut (flat item; ReaPack/SWS stay top-level)
++ In-window ← Back navigation between pages
++ HiDPI / Retina gfx scaling (crisp on M3 Mac)]]></changelog>
+        <source main="main" file="ReaProfessor/ReaProfessor.lua">https://github.com/JewishBidoof/reaprofessor/raw/eeae75adf896e226f42de520fb0557549bb42a73/scripts/ReaProfessor/ReaProfessor.lua</source>
+        <source main="main" file="ReaProfessor/install_extensions_menu.lua">https://github.com/JewishBidoof/reaprofessor/raw/eeae75adf896e226f42de520fb0557549bb42a73/scripts/ReaProfessor/install_extensions_menu.lua</source>
+        <source main="main" file="ReaProfessor/cue_list.lua">https://github.com/JewishBidoof/reaprofessor/raw/eeae75adf896e226f42de520fb0557549bb42a73/scripts/ReaProfessor/cue_list.lua</source>
+        <source main="main" file="ReaProfessor/snapshots.lua">https://github.com/JewishBidoof/reaprofessor/raw/eeae75adf896e226f42de520fb0557549bb42a73/scripts/ReaProfessor/snapshots.lua</source>
+        <source main="main" file="ReaProfessor/chain_rack.lua">https://github.com/JewishBidoof/reaprofessor/raw/eeae75adf896e226f42de520fb0557549bb42a73/scripts/ReaProfessor/chain_rack.lua</source>
+        <source main="main" file="ReaProfessor/navigator.lua">https://github.com/JewishBidoof/reaprofessor/raw/eeae75adf896e226f42de520fb0557549bb42a73/scripts/ReaProfessor/navigator.lua</source>
+        <source main="main" file="ReaProfessor/create_channels.lua">https://github.com/JewishBidoof/reaprofessor/raw/eeae75adf896e226f42de520fb0557549bb42a73/scripts/ReaProfessor/create_channels.lua</source>
+        <source main="main" file="ReaProfessor/live_mode.lua">https://github.com/JewishBidoof/reaprofessor/raw/eeae75adf896e226f42de520fb0557549bb42a73/scripts/ReaProfessor/live_mode.lua</source>
+        <source main="main" file="ReaProfessor/control_panel.lua">https://github.com/JewishBidoof/reaprofessor/raw/eeae75adf896e226f42de520fb0557549bb42a73/scripts/ReaProfessor/control_panel.lua</source>
+        <source main="main" file="ReaProfessor/control_service.lua">https://github.com/JewishBidoof/reaprofessor/raw/eeae75adf896e226f42de520fb0557549bb42a73/scripts/ReaProfessor/control_service.lua</source>
+        <source main="main" file="ReaProfessor/mapping.lua">https://github.com/JewishBidoof/reaprofessor/raw/eeae75adf896e226f42de520fb0557549bb42a73/scripts/ReaProfessor/mapping.lua</source>
+        <source file="ReaProfessor/startup_hook.lua">https://github.com/JewishBidoof/reaprofessor/raw/eeae75adf896e226f42de520fb0557549bb42a73/scripts/ReaProfessor/startup_hook.lua</source>
+        <source file="ReaProfessor/lib/commands.lua">https://github.com/JewishBidoof/reaprofessor/raw/eeae75adf896e226f42de520fb0557549bb42a73/scripts/ReaProfessor/lib/commands.lua</source>
+        <source file="ReaProfessor/lib/config.lua">https://github.com/JewishBidoof/reaprofessor/raw/eeae75adf896e226f42de520fb0557549bb42a73/scripts/ReaProfessor/lib/config.lua</source>
+        <source file="ReaProfessor/lib/data.lua">https://github.com/JewishBidoof/reaprofessor/raw/eeae75adf896e226f42de520fb0557549bb42a73/scripts/ReaProfessor/lib/data.lua</source>
+        <source file="ReaProfessor/lib/menu.lua">https://github.com/JewishBidoof/reaprofessor/raw/eeae75adf896e226f42de520fb0557549bb42a73/scripts/ReaProfessor/lib/menu.lua</source>
+        <source file="ReaProfessor/lib/nav.lua">https://github.com/JewishBidoof/reaprofessor/raw/eeae75adf896e226f42de520fb0557549bb42a73/scripts/ReaProfessor/lib/nav.lua</source>
+        <source file="ReaProfessor/lib/midi.lua">https://github.com/JewishBidoof/reaprofessor/raw/eeae75adf896e226f42de520fb0557549bb42a73/scripts/ReaProfessor/lib/midi.lua</source>
+        <source file="ReaProfessor/lib/osc.lua">https://github.com/JewishBidoof/reaprofessor/raw/eeae75adf896e226f42de520fb0557549bb42a73/scripts/ReaProfessor/lib/osc.lua</source>
+        <source file="ReaProfessor/lib/path.lua">https://github.com/JewishBidoof/reaprofessor/raw/eeae75adf896e226f42de520fb0557549bb42a73/scripts/ReaProfessor/lib/path.lua</source>
+        <source file="ReaProfessor/lib/routing.lua">https://github.com/JewishBidoof/reaprofessor/raw/eeae75adf896e226f42de520fb0557549bb42a73/scripts/ReaProfessor/lib/routing.lua</source>
+        <source file="ReaProfessor/lib/ui.lua">https://github.com/JewishBidoof/reaprofessor/raw/eeae75adf896e226f42de520fb0557549bb42a73/scripts/ReaProfessor/lib/ui.lua</source>
+        <source type="data" file="ReaProfessor.ReaperOSC">https://github.com/JewishBidoof/reaprofessor/raw/eeae75adf896e226f42de520fb0557549bb42a73/resources/osc/ReaProfessor.ReaperOSC</source>
+      </version>
     </reapack>
   </category>
   <metadata>
@@ -285,7 +313,7 @@ ReaPack
 {\pard \ql \f0 \sa0 \li360 \fi-360 1.\tx360\tab {\b Extensions \u8594 ? ReaPack \u8594 ? Import a repository\u8230 ?} \u8594 ? paste URL \u8594 ? OK\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 2.\tx360\tab {\b Extensions \u8594 ? ReaPack \u8594 ? Browse packages\u8230 ?} \u8594 ? filter {\b ReaProfessor} (category {\b Live}) \u8594 ? Install\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 3.\tx360\tab {\b Actions \u8594 ? Show action list} \u8594 ? search {\f1 ReaProfessor} \u8594 ? run {\b ReaProfessor}\sa180\par}
-{\pard \ql \f0 \sa180 \li720 \fi0 ReaProfessor is opened from the {\b Actions} list. It does {\b not} add an Extensions menu item \u8212- editing {\f1 reaper-menu.ini} nested ReaPack/SWS under a submenu. If a previous build did that, open the hub and click {\b Restore Extensions menu}.\par}
+{\pard \ql \f0 \sa180 \li720 \fi0 Open via {\b Extensions \u8594 ? ReaProfessor} or {\b Actions}. The Extensions item is a flat command (not a submenu) so ReaPack/SWS stay top-level. Quit/reopen once after first install. Hub: Install / Remove Extensions shortcut.\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 See {\field{\*\fldinst{HYPERLINK "docs/REAPACK.md"}}{\fldrslt{\ul
 docs/REAPACK.md
 }}}
@@ -311,11 +339,11 @@ docs/                   Feature map + architecture\line
 tests/                  Automated REAPER script checks\line
 .cursor/                Cloud agent environment config\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel1 \b \fs32 Status\par}
-{\pard \ql \f0 \sa180 \li0 \fi0 Active development (v0.3.9):\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Active development (v0.4.0):\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Full snapshot recall restores complete multi-FX / JSFX chains (FXCHAIN nesting fix)\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Params snapshots use normalized values and match FX by identity\par}
-{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Actions-list entry only \u8212- does {\b not} customize Extensions (keeps ReaPack/SWS top-level)\par}
-{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Hub button {\b Restore Extensions menu} undoes any prior nesting from older builds\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Extensions \u8594 ? ReaProfessor flat shortcut (ReaPack/SWS stay top-level) + Actions list\par}
+{\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab \u8592- Back navigation between pages; HiDPI / Retina gfx scaling; hub can install/remove Extensions shortcut\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Cue list: {\f1 + CUE} captures current FX as a snapshot and links it\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab Show/project actions enabled\par}
 {\pard \ql \f0 \sa0 \li360 \fi-360 \bullet \tx360\tab 1:1 channel creator, snapshots, custom MIDI/OSC mapping\par}
