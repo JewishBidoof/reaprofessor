@@ -49,7 +49,7 @@ if ! grep -q '^OK$' "$RESULT"; then
 fi
 
 # Required keys
-for key in version sws reapack modules cue_go cue_missing cue_link channels_same channels_double snap_bypass snap_params snap_full snap_js_full snap_js_replace maps_empty_default midi_match midi_no_default osc_match osc_unmapped_ignored; do
+for key in version sws reapack modules cue_go cue_missing cue_link channels_same channels_double snap_bypass snap_params snap_full snap_js_full snap_js_replace maps_empty_default midi_match midi_no_default osc_match osc_unmapped_ignored tc_format tc_parse tc_chase tc_once tc_rewind; do
   grep -q "^${key}=" "$RESULT" || { echo "Missing key: $key" >&2; exit 1; }
 done
 
@@ -64,5 +64,10 @@ grep -q '^maps_empty_default=true$' "$RESULT" || { echo "maps should start empty
 grep -q '^midi_match=true$' "$RESULT" || { echo "midi map match failed" >&2; exit 1; }
 grep -q '^midi_no_default=true$' "$RESULT" || { echo "unexpected default midi binding" >&2; exit 1; }
 grep -q '^osc_unmapped_ignored=true$' "$RESULT" || { echo "unmapped OSC should be ignored" >&2; exit 1; }
+grep -q '^tc_format=true$' "$RESULT" || { echo "tc_format failed" >&2; exit 1; }
+grep -q '^tc_parse=true$' "$RESULT" || { echo "tc_parse failed" >&2; exit 1; }
+grep -q '^tc_chase=true$' "$RESULT" || { echo "tc_chase failed" >&2; exit 1; }
+grep -q '^tc_once=true$' "$RESULT" || { echo "tc_once failed" >&2; exit 1; }
+grep -q '^tc_rewind=true$' "$RESULT" || { echo "tc_rewind failed" >&2; exit 1; }
 
 echo "Smoke test passed."

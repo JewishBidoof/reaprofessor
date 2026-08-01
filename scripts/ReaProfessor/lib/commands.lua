@@ -1,5 +1,5 @@
 -- @description ReaProfessor central command handlers
--- @version 0.5.4
+-- @version 0.6.0
 -- @author JewishBidoof
 -- @noindex
 

@@ -28,11 +28,16 @@ Show state lives **in the project** so `.RPP` files are portable:
 {
   id = "cue_001",
   name = "Song 2 - Verse",
-  kind = "snapshot",   -- snapshot | midi | osc | action | compound
-  payload = { snapshot = "Verse A" },
-  notes = "",
+  kind = "cue",          -- cue | dummy
+  snapshot_name = "Verse A",
+  osc = "",              -- blank → {parent}/{n}
+  midi = nil,            -- optional outgoing
+  tc = "01:00:00:00",    -- optional fire time (H:M:S:F)
+  tc_sec = 3600,         -- cached seconds for chase
 }
 ```
+
+Timecode chase uses the REAPER playhead (so external LTC/MTC works when REAPER is chasing). Arm **TC CHASE** in the cue list header.
 
 ### Snapshot record
 

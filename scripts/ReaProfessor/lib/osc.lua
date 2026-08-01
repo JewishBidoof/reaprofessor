@@ -1,5 +1,5 @@
 -- @description ReaProfessor OSC address map + ExtState bridge
--- @version 0.5.4
+-- @version 0.6.0
 -- @author JewishBidoof
 -- @noindex
 --

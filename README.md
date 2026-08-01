@@ -70,10 +70,11 @@ tests/                  Automated REAPER script checks
 
 ## Status
 
-Active development (v0.5.4):
+Active development (v0.6.0):
 
 - **Cue List** is the product: each cue recalls a full FX + track-send snapshot
 - **Go / Back / Fire Selected**, edit mode (reorder/delete), Create Channels helper
+- **Timecode chase**: arm TC CHASE; per-cue Set/Capture/Clear TC; fires on playhead (LTC/MTC via REAPER)
 - Parent OSC prefix; default cue path `{parent}/{cue#}`; per-cue MIDI/OSC; transport bindings
 - Global MIDI channel filter (Omni or 1–16); dummy cues (MIDI/OSC only)
 - Show data stored **in the project** (`.RPP` ProjExtState) — portable with the project file

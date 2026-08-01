@@ -29,6 +29,7 @@ local ok, err = pcall(function()
   local Commands = require("commands")
   local MIDI = require("midi")
   local Config = require("config")
+  local TC = require("timecode")
 
   -- Smoke exercises library APIs directly; enable actions for this harness only.
   Config.FINALIZED = true
@@ -216,6 +217,22 @@ local ok, err = pcall(function()
   local one = OSC.poll_oneshot()
   local oneshot_ok = one and one.path == "/Custom/Go"
 
+  -- Timecode parse/format + chase edge detection
+  local tc_cue = Data.new_cue("TC Cue", { kind = "dummy" })
+  TC.set_cue_tc(tc_cue, 10.0)
+  local tc_fmt_ok = type(tc_cue.tc) == "string" and tc_cue.tc ~= "" and TC.cue_seconds(tc_cue) == 10.0
+  local tc_parse_ok = math.abs((TC.parse(TC.format(12.5)) or -1) - 12.5) < (1.0 / math.max(1, TC.fps()))
+  local st = TC.new_chase_state()
+  TC.poll_chase({ tc_cue }, true, st, { running = true, pos = 9.5 })
+  local crossed = TC.poll_chase({ tc_cue }, true, st, { running = true, pos = 10.05 })
+  local tc_chase_ok = #crossed == 1 and crossed[1] == 1
+  local crossed_again = TC.poll_chase({ tc_cue }, true, st, { running = true, pos = 10.2 })
+  local tc_once_ok = #crossed_again == 0
+  TC.poll_chase({ tc_cue }, true, st, { running = true, pos = 8.0 }) -- rewind clears fired
+  TC.poll_chase({ tc_cue }, true, st, { running = true, pos = 9.5 })
+  local after_rw = TC.poll_chase({ tc_cue }, true, st, { running = true, pos = 10.1 })
+  local tc_rewind_ok = #after_rw == 1
+
   local enc = Data.encode({ a = 1, b = "x", c = { true, false } })
   local dec = Data.decode(enc)
   local json_ok = dec and dec.a == 1 and dec.b == "x" and dec.c[1] == true
@@ -250,6 +267,11 @@ local ok, err = pcall(function()
   add("midi_no_default", midi_nomatch == nil)
   add("osc_match", osc_cmd == "cue_go")
   add("osc_unmapped_ignored", osc_unmapped == nil)
+  add("tc_format", tc_fmt_ok)
+  add("tc_parse", tc_parse_ok)
+  add("tc_chase", tc_chase_ok)
+  add("tc_once", tc_once_ok)
+  add("tc_rewind", tc_rewind_ok)
   add("scripts", scripts)
 end)
 

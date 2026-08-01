@@ -1,5 +1,5 @@
 -- @description ReaProfessor ExtState data helpers
--- @version 0.5.3
+-- @version 0.6.0
 -- @author JewishBidoof
 -- @noindex
 
@@ -208,6 +208,18 @@ function Data.normalize_cue(cue)
   cue.osc = cue.osc or "" -- empty → default {parent}/{cue#}
   cue.send_on_fire = cue.send_on_fire and true or false
   if type(cue.midi) ~= "table" then cue.midi = nil end
+  -- Timecode fire point (project time / LTC-chased playhead). Blank = manual only.
+  cue.tc = tostring(cue.tc or "")
+  if cue.tc == "" then
+    cue.tc_sec = nil
+  else
+    local sec = tonumber(cue.tc_sec)
+    if not sec then
+      local ok, TC = pcall(require, "timecode")
+      if ok and TC and TC.parse then sec = TC.parse(cue.tc) end
+    end
+    cue.tc_sec = sec
+  end
   return cue
 end
 
@@ -215,13 +227,15 @@ end
 function Data.new_cue(name, opts)
   opts = opts or {}
   return Data.normalize_cue({
-    id = Data.new_id("cue"),
+    id = opts.id or Data.new_id("cue"),
     name = name or "Cue",
     kind = opts.kind or "cue",
     snapshot_name = opts.snapshot_name or "",
     osc = opts.osc or "",
     midi = opts.midi,
     send_on_fire = opts.send_on_fire and true or false,
+    tc = opts.tc or "",
+    tc_sec = opts.tc_sec,
   })
 end
 
@@ -322,6 +336,9 @@ function Data.load_meta()
     end
   end
   if meta.edit_mode == nil then meta.edit_mode = false end
+  -- When armed, cues with a TC fire as the playhead crosses their time.
+  if meta.tc_chase == nil then meta.tc_chase = false end
+  if meta.tc_markers == nil then meta.tc_markers = true end -- mirror cue TC as project markers
   return meta
 end
 
